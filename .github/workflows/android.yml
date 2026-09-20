@@ -1,0 +1,66 @@
+name: Compilar app Android
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Empaquetar la parte web
+        run: npm run build
+
+      - name: Sincronizar con Android
+        run: npx cap sync android
+
+      - name: Preparar clave de firma (si existe)
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+            echo "Clave de firma encontrada: el AAB saldra firmado."
+          else
+            echo "No hay clave de firma: el AAB saldra sin firmar (solo sirve el APK de prueba)."
+          fi
+
+      - name: Compilar APK de prueba y AAB de publicacion
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug bundleRelease --no-daemon
+
+      - name: Guardar APK de prueba
+        uses: actions/upload-artifact@v4
+        with:
+          name: plie-apk-de-prueba
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Guardar AAB para Play Store
+        uses: actions/upload-artifact@v4
+        with:
+          name: plie-aab-para-play-store
+          path: android/app/build/outputs/bundle/release/app-release.aab

@@ -1,0 +1,22 @@
+{
+  "name": "plie-ballet",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plié - Ballet en casa",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^8.1.0",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "cordova-plugin-purchase": "^13.18.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.63.0"
+  }
+}

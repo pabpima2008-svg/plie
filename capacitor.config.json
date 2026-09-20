@@ -1,0 +1,7 @@
+{
+  "appId": "com.pliedance.app",
+  "appName": "Plié",
+  "webDir": "www",
+  "android": { "allowMixedContent": false },
+  "server": { "androidScheme": "https" }
+}

@@ -540,3 +540,39 @@ export const CLASSES = [
     ]
   }
 ];
+
+/* ------------------------------------------------------------------
+   Secciones y animaciones de la sombra (guia) para cada ejercicio.
+   Secciones: 'tecnica' y 'fisico' (la teoria son lecciones aparte).
+   ------------------------------------------------------------------ */
+import { FUERZA, THEORY } from './extra.js';
+CLASSES.push(FUERZA);
+export { THEORY };
+
+const META = {
+  'barra-basica': {
+    section: 'tecnica', order: 1,
+    anims: { warmup: 'march', posture: 'posture', plie: 'plie', tendu: 'tendu', degage: 'degage', rond: 'rond', releve: 'releve', stretch: 'coach' }
+  },
+  centro: {
+    section: 'tecnica', order: 2,
+    anims: { 'c-warm': 'march', port: 'portdebras', 'c-releve': 'releve2', walk: 'walk', saute: 'saute', bow: 'bow' }
+  },
+  fuerza: {
+    section: 'fisico', order: 1,
+    anims: { 'f-warm': 'march', heel: 'heelraise', squat: 'squat', bridge: 'coach', plank: 'coach', balance: 'retire', deadbug: 'coach' }
+  },
+  estiramientos: {
+    section: 'fisico', order: 2,
+    anims: { neck: 'neck', butterfly: 'coach', fold: 'coach', quad: 'coach', cobra: 'coach', child: 'coach', feet: 'coach' }
+  }
+};
+for (const c of CLASSES) {
+  const m = META[c.id];
+  c.section = m.section;
+  c.order = m.order;
+  for (const e of c.exercises) e.anim = m.anims[e.id] || 'coach';
+}
+
+export const SECTIONS = ['teoria', 'tecnica', 'fisico'];
+export const classesOf = (section) => CLASSES.filter((c) => c.section === section).sort((a, b) => a.order - b.order);

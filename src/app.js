@@ -1,4 +1,5 @@
-import { CLASSES } from './data.js';
+import { CLASSES, THEORY, classesOf } from './data.js';
+import { createGuide } from './guide.js';
 import { STR } from './i18n.js';
 import { Ads, Billing, CONFIG, adProfile, isNative } from './ads.js';
 import { App as CapApp } from '@capacitor/app';
@@ -16,6 +17,8 @@ const state = {
   premium: LS.get('premium', false),
   done: LS.get('done', {}),
   screen: 'home',
+  section: 'tecnica',
+  lessonId: null,
   classId: null,
   changingAge: false
 };
@@ -46,7 +49,8 @@ const profile = () => adProfile(currentAge() ?? 0);
 const COLORS = {
   pink: ['#f9bfd6', '#e0629a'],
   lilac: ['#d5c9f7', '#8b7fd6'],
-  peach: ['#ffd9bd', '#f0894f']
+  peach: ['#ffd9bd', '#f0894f'],
+  mint: ['#c6efe0', '#3fae8c']
 };
 
 /* ---------- audio (metronomo y avisos) ---------- */
@@ -95,7 +99,7 @@ async function keepAwake(on) {
 function setAdHeight(h) { document.documentElement.style.setProperty('--ad-h', (h || 0) + 'px'); }
 Ads.onHeight = setAdHeight;
 
-function screenWantsAds() { return ['home', 'detail', 'finish', 'settings'].includes(state.screen); }
+function screenWantsAds() { return ['home', 'section', 'detail', 'finish', 'settings'].includes(state.screen); }
 async function syncAds() {
   const want = !state.premium && state.birth && screenWantsAds();
   if (want) {
@@ -108,6 +112,18 @@ async function syncAds() {
 }
 const adSlotHtml = () => (!isNative() && !state.premium && screenWantsAds() && state.birth)
   ? `<div class="ad-slot" aria-hidden="true"><span>${t('adLabel')}</span> · ${profile()}</div>` : '';
+
+/* ---------- la sombra (guia) ---------- */
+let G = null;
+function killGuide() { if (G) { G.destroy(); G = null; } }
+function mountGuide(sel, anim, bpm) {
+  killGuide();
+  const c = document.querySelector(sel);
+  if (!c) return null;
+  G = createGuide(c);
+  G.play(anim, bpm);
+  return G;
+}
 
 /* ---------- reproductor ---------- */
 const P = {
@@ -177,6 +193,7 @@ function togglePause() {
   } else {
     stopMetro();
   }
+  if (G) G.setRunning(P.running);
   const b = document.getElementById('pauseBtn');
   if (b) b.textContent = P.running ? t('pause') : t('resume');
 }
@@ -309,6 +326,35 @@ function classCard(c) {
     </button>`;
 }
 
+const SEC_COLOR = { teoria: 'lilac', tecnica: 'pink', fisico: 'mint' };
+function sectionStats(sec) {
+  if (sec === 'teoria') return { count: THEORY.length, mins: THEORY.reduce((a, l) => a + l.mins, 0), unit: t('lessons') };
+  const cs = classesOf(sec);
+  return { count: cs.length, mins: cs.reduce((a, c) => a + totalMin(c), 0), unit: t('classesWord') };
+}
+function tile(sec) {
+  const [c1, c2] = COLORS[SEC_COLOR[sec]];
+  const st = sectionStats(sec);
+  return `
+    <button class="card tile" data-sec="${sec}" style="--c1:${c1};--c2:${c2}">
+      <span class="tname">${t('sec_' + sec)}</span>
+      <span class="tdesc">${t('secdesc_' + sec)}</span>
+      <span class="tmeta">${st.count} ${st.unit} · ${st.mins} ${t('minutes')}</span>
+    </button>`;
+}
+function lessonCard(l) {
+  const [c1, c2] = COLORS[l.color] || COLORS.lilac;
+  const n = state.done['lesson:' + l.id] || 0;
+  const doneTxt = n === 0 ? '' : (n === 1 ? t('doneOnce') : t('doneTimes', { n }));
+  return `
+    <button class="card class-card" data-lesson="${l.id}" style="--c1:${c1};--c2:${c2}">
+      <span class="badge">${l.mins} ${t('minutes')}</span>
+      <span class="ctitle">${L(l.title)}</span>
+      <span class="csub">${L(l.subtitle)}</span>
+      <span class="cmeta">${l.cards.length} ${t('cardsAndQuiz')}${doneTxt ? ' · ' + doneTxt : ''}</span>
+    </button>`;
+}
+
 function renderHome() {
   $app.innerHTML = `
     <main class="screen">
@@ -316,13 +362,114 @@ function renderHome() {
         <div class="brand">${logo()}<div><strong>${t('appName')}</strong><small>${t('tagline')}</small></div></div>
         <button class="icon-btn" id="setBtn" aria-label="${t('settings')}">${gearSvg()}</button>
       </header>
-      <h1 class="hello">${t('hello')}</h1>
-      <p class="muted">${t('helloSub')}</p>
-      <div class="list">${CLASSES.map(classCard).join('')}</div>
+      <section class="hero-guide">
+        <div id="guide" class="guide small"></div>
+        <div class="bubble"><strong>${t('guideHello')}</strong><span>${t('guideSub')}</span></div>
+      </section>
+      <div class="list">${['teoria', 'tecnica', 'fisico'].map(tile).join('')}</div>
       ${adSlotHtml()}
     </main>`;
   document.getElementById('setBtn').onclick = () => go('settings');
+  document.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => go('section', { section: b.dataset.sec }));
+  mountGuide('#guide', 'wave', 90);
+}
+
+function renderSection() {
+  const sec = state.section;
+  const [c1, c2] = COLORS[SEC_COLOR[sec]];
+  const items = sec === 'teoria' ? THEORY.map(lessonCard).join('') : classesOf(sec).map(classCard).join('');
+  const st = sectionStats(sec);
+  $app.innerHTML = `
+    <main class="screen">
+      <header class="topbar"><button class="icon-btn" id="backBtn" aria-label="${t('back')}">${backSvg()}</button><strong>${t('sec_' + sec)}</strong><span class="spacer"></span></header>
+      <div class="hero" style="--c1:${c1};--c2:${c2}">
+        <span class="badge">${st.count} ${st.unit} · ${st.mins} ${t('minutes')}</span>
+        <h1>${t('sec_' + sec)}</h1>
+        <p>${t('secdesc_' + sec)}</p>
+      </div>
+      <div class="list">${items}</div>
+      ${adSlotHtml()}
+    </main>`;
+  document.getElementById('backBtn').onclick = () => go('home');
   document.querySelectorAll('[data-class]').forEach(b => b.onclick = () => go('detail', { classId: b.dataset.class }));
+  document.querySelectorAll('[data-lesson]').forEach(b => b.onclick = () => openLesson(b.dataset.lesson));
+}
+
+/* ---------- lecciones de teoria ---------- */
+const LV = { i: 0, quiz: false, qi: 0, score: 0, picked: null };
+function openLesson(id) {
+  Object.assign(LV, { i: 0, quiz: false, qi: 0, score: 0, picked: null });
+  go('lesson', { lessonId: id });
+}
+
+function renderLesson() {
+  const l = THEORY.find(x => x.id === state.lessonId);
+  const [c1, c2] = COLORS[l.color] || COLORS.lilac;
+  const head = (label, total, cur) => `
+    <header class="topbar">
+      <button class="icon-btn" id="closeBtn" aria-label="${t('close')}">${closeSvg()}</button>
+      <span class="progress-text">${label}</span>
+      <span class="spacer"></span>
+    </header>
+    <div class="dots">${Array.from({ length: total }, (_, i) => `<i class="${i < cur ? 'done' : i === cur ? 'cur' : ''}"></i>`).join('')}</div>`;
+
+  if (!LV.quiz) {
+    const card = l.cards[LV.i];
+    const last = LV.i === l.cards.length - 1;
+    $app.innerHTML = `
+      <main class="screen player" style="--c1:${c1};--c2:${c2}">
+        ${head(`${L(l.title)} · ${t('card')} ${LV.i + 1} ${t('of')} ${l.cards.length}`, l.cards.length, LV.i)}
+        <div class="stage"><div id="guide" class="guide"></div></div>
+        <article class="lesson-card"><h1>${L(card.title)}</h1><p>${L(card.text)}</p></article>
+        <div class="controls two">
+          <button class="btn secondary" id="prevBtn" ${LV.i === 0 ? 'disabled' : ''}>${t('prev')}</button>
+          <button class="btn" id="nextBtn">${last ? t('takeQuiz') : t('next')}</button>
+        </div>
+      </main>`;
+    document.getElementById('prevBtn').onclick = () => { if (LV.i > 0) { LV.i--; renderLesson(); } };
+    document.getElementById('nextBtn').onclick = () => { if (last) { LV.quiz = true; LV.qi = 0; LV.picked = null; } else LV.i++; renderLesson(); };
+    mountGuide('#guide', card.anim, 60);
+  } else if (LV.qi < l.quiz.length) {
+    const q = l.quiz[LV.qi];
+    const opts = q.options[state.lang] || q.options.es;
+    const answered = LV.picked !== null;
+    const ok = answered && LV.picked === q.answer;
+    $app.innerHTML = `
+      <main class="screen player" style="--c1:${c1};--c2:${c2}">
+        ${head(`${t('takeQuiz')} · ${t('question')} ${LV.qi + 1} ${t('of')} ${l.quiz.length}`, l.quiz.length, LV.qi)}
+        <div class="stage"><div id="guide" class="guide"></div></div>
+        <article class="lesson-card"><h1>${L(q.q)}</h1></article>
+        <div class="opts">
+          ${opts.map((o, i) => `<button class="opt ${answered ? (i === q.answer ? 'right' : i === LV.picked ? 'wrong' : '') : ''}" data-o="${i}" ${answered ? 'disabled' : ''}>${o}</button>`).join('')}
+        </div>
+        ${answered ? `<p class="feedback ${ok ? 'ok' : 'no'}">${ok ? t('correct') : t('wrongIs')}</p>
+        <button class="btn big" id="qNext">${LV.qi + 1 < l.quiz.length ? t('next') : t('seeResult')}</button>` : ''}
+      </main>`;
+    document.querySelectorAll('[data-o]').forEach(b => b.onclick = () => {
+      LV.picked = parseInt(b.dataset.o, 10);
+      if (LV.picked === q.answer) LV.score++;
+      renderLesson();
+    });
+    const nx = document.getElementById('qNext');
+    if (nx) nx.onclick = () => { LV.qi++; LV.picked = null; renderLesson(); };
+    mountGuide('#guide', ok ? 'celebrate' : 'coach', 90);
+  } else {
+    const good = LV.score >= 2;
+    $app.innerHTML = `
+      <main class="screen center player" style="--c1:${c1};--c2:${c2}">
+        <div class="stage"><div id="guide" class="guide"></div></div>
+        <h1>${t('score', { n: LV.score, m: l.quiz.length })}</h1>
+        <p class="muted">${L(l.title)}</p>
+        <button class="btn big" id="doneBtn">${t('finishLesson')}</button>
+      </main>`;
+    document.getElementById('doneBtn').onclick = () => {
+      state.done['lesson:' + l.id] = (state.done['lesson:' + l.id] || 0) + 1;
+      LS.set('done', state.done);
+      go('section', { section: 'teoria' });
+    };
+    mountGuide('#guide', good ? 'celebrate' : 'coach', 100);
+  }
+  document.getElementById('closeBtn') && (document.getElementById('closeBtn').onclick = () => go('section', { section: 'teoria' }));
 }
 
 function renderDetail() {
@@ -346,7 +493,7 @@ function renderDetail() {
       </section>
       ${adSlotHtml()}
     </main>`;
-  document.getElementById('backBtn').onclick = () => go('home');
+  document.getElementById('backBtn').onclick = () => go('section', { section: c.section });
   document.getElementById('startBtn').onclick = () => startClass(c.id);
 }
 
@@ -365,12 +512,15 @@ function renderPlayer() {
       </header>
       <div class="dots">${c.exercises.map((_, i) => `<i class="${i < P.i ? 'done' : i === P.i ? 'cur' : ''}"></i>`).join('')}</div>
       <h1 class="ex-title">${L(ex.name)}</h1>
-      <div class="ring-wrap">
-        <svg viewBox="0 0 200 200" class="ring-svg" aria-hidden="true">
-          <circle cx="100" cy="100" r="90" class="ring-bg"/>
-          <circle cx="100" cy="100" r="90" class="ring-fg" id="ring" stroke-dasharray="565.49" stroke-dashoffset="0"/>
-        </svg>
-        <div class="time" id="time" role="timer">${fmt(ex.dur)}</div>
+      <div class="stage">
+        <div id="guide" class="guide"></div>
+        <div class="ring-wrap mini">
+          <svg viewBox="0 0 200 200" class="ring-svg" aria-hidden="true">
+            <circle cx="100" cy="100" r="90" class="ring-bg"/>
+            <circle cx="100" cy="100" r="90" class="ring-fg" id="ring" stroke-dasharray="565.49" stroke-dashoffset="0"/>
+          </svg>
+          <div class="time" id="time" role="timer">${fmt(ex.dur)}</div>
+        </div>
       </div>
       <ol class="steps">${(ex.steps[state.lang] || ex.steps.es).map(s => `<li>${s}</li>`).join('')}</ol>
       <p class="tip"><strong>${t('tip')}:</strong> ${L(ex.tip)}</p>
@@ -394,12 +544,15 @@ function renderPlayer() {
     if (P.metro && P.running) { ensureAudio(); startMetro(ex.bpm); } else stopMetro();
   };
   updateTimerUi(ex);
+  mountGuide('#guide', ex.anim, ex.bpm || 60);
+  if (G && !P.running) G.setRunning(false);
 }
 
 function renderFinish() {
   const c = getClass(state.classId);
   $app.innerHTML = `
     <main class="screen center">
+      <div class="guide small" id="guide"></div>
       <div class="stars" aria-hidden="true">${starSvg()}${starSvg()}${starSvg()}</div>
       <h1>${t('finishTitle')}</h1>
       <p class="muted">${L(c.title)} · ${totalMin(c)} ${t('minutes')}</p>
@@ -408,6 +561,7 @@ function renderFinish() {
       ${adSlotHtml()}
     </main>`;
   document.getElementById('homeBtn').onclick = () => go('home');
+  mountGuide('#guide', 'celebrate', 110);
 }
 
 function renderSettings() {
@@ -457,10 +611,13 @@ const starSvg = () => `<svg viewBox="0 0 24 24" width="56" height="56"><path d="
 
 /* ---------- render principal ---------- */
 function render() {
+  killGuide();
   document.documentElement.lang = state.lang;
   if (!state.birth && state.screen !== 'age') state.screen = 'age';
   switch (state.screen) {
     case 'age': renderAge(); break;
+    case 'section': renderSection(); break;
+    case 'lesson': renderLesson(); break;
     case 'detail': renderDetail(); break;
     case 'player': renderPlayer(); break;
     case 'finish': renderFinish(); break;
@@ -491,7 +648,9 @@ try {
     if (state.screen === 'player') askQuit();
     else if (state.screen === 'age' && state.changingAge) { state.changingAge = false; go('settings'); }
     else if (state.screen === 'home' || state.screen === 'age') CapApp.exitApp();
-    else go(state.screen === 'settings' || state.screen === 'detail' || state.screen === 'finish' ? 'home' : 'home');
+    else if (state.screen === 'detail') go('section', { section: (getClass(state.classId) || {}).section || 'tecnica' });
+    else if (state.screen === 'lesson') go('section', { section: 'teoria' });
+    else go('home');
   });
 } catch { /* vista previa web */ }
 
@@ -504,4 +663,4 @@ initServices(false).then(syncAds);
 Billing.init();
 
 // Solo para pruebas en el navegador (no existe en la app instalada)
-if (!isNative()) window.__plie = { state, go, startClass, P };
+if (!isNative()) window.__plie = { state, go, startClass, openLesson, P, LV };

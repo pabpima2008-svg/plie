@@ -129,3 +129,48 @@ export const STR = {
     back: 'Back'
   }
 };
+
+Object.assign(STR.es, {
+  guideHello: 'Hola, soy tu sombra. Te acompaño en cada paso.',
+  guideSub: 'Elige una sección para empezar.',
+  sec_teoria: 'Teoría',
+  sec_tecnica: 'Técnica',
+  sec_fisico: 'Físico',
+  secdesc_teoria: 'Posiciones, vocabulario y cómo es una clase.',
+  secdesc_tecnica: 'Clases de barra y centro, paso a paso.',
+  secdesc_fisico: 'Fuerza y flexibilidad para bailar mejor.',
+  lessons: 'lecciones',
+  classesWord: 'clases',
+  cardsAndQuiz: 'tarjetas y mini test',
+  card: 'Tarjeta',
+  takeQuiz: 'Mini test',
+  question: 'Pregunta',
+  correct: '¡Correcto!',
+  wrongIs: 'Casi. Repasa la tarjeta y prueba otra vez más tarde.',
+  score: 'Has acertado {n} de {m}',
+  seeResult: 'Ver resultado',
+  finishLesson: 'Terminar lección',
+  guideDemo: 'Mírame y sigue los pasos.'
+});
+Object.assign(STR.en, {
+  guideHello: 'Hi, I am your shadow. I will guide you every step of the way.',
+  guideSub: 'Pick a section to begin.',
+  sec_teoria: 'Theory',
+  sec_tecnica: 'Technique',
+  sec_fisico: 'Fitness',
+  secdesc_teoria: 'Positions, vocabulary and what a class is like.',
+  secdesc_tecnica: 'Barre and centre classes, step by step.',
+  secdesc_fisico: 'Strength and flexibility to dance better.',
+  lessons: 'lessons',
+  classesWord: 'classes',
+  cardsAndQuiz: 'cards and mini quiz',
+  card: 'Card',
+  takeQuiz: 'Mini quiz',
+  question: 'Question',
+  correct: 'Correct!',
+  wrongIs: 'Almost. Review the card and try again later.',
+  score: 'You got {n} of {m}',
+  seeResult: 'See result',
+  finishLesson: 'Finish lesson',
+  guideDemo: 'Watch me and follow the steps.'
+});

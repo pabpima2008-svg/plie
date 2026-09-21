@@ -84,9 +84,10 @@ Cambia lo que quieras, haz commit y "Push" en GitHub Desktop. GitHub compila un 
 **Descripción larga (ES):**
 Plié te lleva de la mano en clases de ballet para hacer en casa, sin necesidad de apuntarte a una academia. Cada clase está dividida en ejercicios cortos, con temporizador, un ritmo opcional para marcar los tiempos y explicaciones paso a paso.
 
-- Barra para principiantes: calentamiento, pliés, tendus, dégagés, rond de jambe, relevés y estiramiento final.
-- Estiramientos suaves para soltar el cuerpo antes o después de bailar.
-- Centro y equilibrio: port de bras, pasos en media punta, sautés y reverencia.
+- Una sombra guía te enseña las posiciones y los movimientos en pantalla.
+- Teoría: lecciones cortas con mini test sobre posiciones, vocabulario, postura y cómo es una clase.
+- Técnica: barra para principiantes (pliés, tendus, dégagés, rond de jambe, relevés) y centro (port de bras, saltos, reverencia).
+- Físico: fuerza para bailar y estiramientos suaves.
 - En español y en inglés.
 - Pensada para niñas, niños, adolescentes y adultos que empiezan.
 
@@ -97,9 +98,10 @@ Los ejercicios son orientativos y no sustituyen a un profesor de ballet. Baila c
 **Descripción larga (EN):**
 Plié guides you through ballet classes you can do at home, no studio needed. Each class is split into short exercises with a timer, an optional beat to keep time, and step-by-step explanations.
 
-- Beginner barre: warm-up, pliés, tendus, dégagés, rond de jambe, relevés and a final stretch.
-- Gentle stretching to loosen up before or after dancing.
-- Centre and balance: port de bras, steps on demi-pointe, sautés and a bow.
+- A shadow guide shows you the positions and movements on screen.
+- Theory: short lessons with a mini quiz on positions, vocabulary, posture and what a class is like.
+- Technique: beginner barre (pliés, tendus, dégagés, rond de jambe, relevés) and centre (port de bras, jumps, bow).
+- Fitness: strength for dancing and gentle stretching.
 - In English and Spanish.
 - Made for children, teenagers and adults who are just starting.
 
@@ -111,5 +113,6 @@ Exercises are for guidance only and do not replace a ballet teacher. If you are 
 
 - Capturas de pantalla para la ficha (mínimo 2). Se pueden hacer desde el móvil con la app instalada.
 - Un gráfico de funciones (1024×500) para la ficha.
-- Ilustraciones o fotos de cada ejercicio (ahora las clases son por texto, temporizador y ritmo).
-- Más clases.
+- Que una profesora o bailarina revise las poses de la sombra y los textos técnicos antes de publicar.
+- La sombra se ve de frente: enseña bien pliés, tendus a la segunda, relevés, posiciones de brazos y equilibrio. En los ejercicios de suelo (mariposa, cobra, puente...) se queda como guía sin demostrar el movimiento. Una vista de perfil lo mejoraría.
+- Más lecciones de teoría, más clases y una "sesión del día" que junte teoría, técnica y físico.

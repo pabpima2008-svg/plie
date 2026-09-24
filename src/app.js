@@ -111,7 +111,7 @@ async function syncAds() {
   }
 }
 const adSlotHtml = () => (!isNative() && !state.premium && screenWantsAds() && state.birth)
-  ? `<div class="ad-slot" aria-hidden="true"><span>${t('adLabel')}</span> · ${profile()}</div>` : '';
+  ? `<div class="ad-slot" aria-hidden="true"><span>${t('adPreview')}</span></div>` : '';
 
 /* ---------- la sombra (guia) ---------- */
 let G = null;

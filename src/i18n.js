@@ -174,3 +174,6 @@ Object.assign(STR.en, {
   finishLesson: 'Finish lesson',
   guideDemo: 'Watch me and follow the steps.'
 });
+
+STR.es.adPreview = 'Aquí irá el anuncio (vista previa)';
+STR.en.adPreview = 'Ad space (preview)';

@@ -296,3 +296,44 @@ select, input[type=number] {
 .tl { padding-left: 20px; margin: 8px 0 10px; }
 .rule { text-align: center; margin: 4px 8px 0; }
 .mmeta { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ---------- alta, niveles y sesion combinada ---------- */
+.onb-hero { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.opt.sel { border-color: var(--rose); background: #ffe8ee; }
+.selfq { background: var(--card); border-radius: var(--radius); padding: 14px 16px; margin: 12px 0; box-shadow: var(--shadow); }
+.selfq h2 { margin-top: 8px; font-size: 18px; }
+.selfq .opts { margin: 8px 0 0; }
+.prows { display: grid; gap: 14px; margin: 14px 0; }
+.prow { background: var(--card); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); display: grid; gap: 10px; }
+.prow .bchip { justify-self: start; }
+.lvl-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.lvl-pick button {
+  position: relative; display: grid; justify-items: center; gap: 0; padding: 10px 4px 8px; border-radius: 16px; cursor: pointer;
+  border: 2px solid var(--line); background: var(--card); color: var(--text); font: inherit;
+}
+.lvl-pick button b { font-size: 22px; font-weight: 900; }
+.lvl-pick button small { font-size: 12px; font-weight: 700; color: var(--muted); }
+.lvl-pick button i { font-style: normal; font-size: 10px; font-weight: 800; color: var(--rose-deep); margin-top: 2px; }
+.lvl-pick button.on { border-color: var(--rose); background: linear-gradient(135deg, #ff9fb4, var(--rose)); color: #fff; }
+.lvl-pick button.on small, .lvl-pick button.on i { color: #fff; }
+.mlevel { font-size: 13px; font-weight: 800; opacity: .92; margin-top: -4px; }
+.lvrows { display: grid; gap: 8px; margin: 6px 0 4px; }
+.lvrow { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; column-gap: 10px; align-items: center; }
+.lvrow strong { font-size: 18px; }
+.lvrow small { grid-column: 1; font-weight: 700; opacity: .9; margin-top: -2px; }
+.pips { grid-row: 1 / span 2; grid-column: 2; display: flex; gap: 6px; }
+.pips i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 900; font-size: 14px; background: rgba(255,255,255,.22); color: rgba(255,255,255,.75); }
+.pips i.cur { background: #fff; color: var(--rose-deep); box-shadow: 0 0 0 3px rgba(255,255,255,.4); }
+.pips i.done { background: var(--gold); color: #fff; }
+.combo-card {
+  margin-top: 12px; width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--card); border: 2px solid var(--blush); border-radius: 24px; padding: 14px 16px; box-shadow: var(--shadow);
+}
+.combo-card strong { display: block; font-size: 19px; font-weight: 900; }
+.combo-card small { color: var(--muted); font-size: 14px; }
+.cstripe { display: grid; grid-template-rows: repeat(3, 1fr); gap: 4px; width: 40px; height: 48px; flex: none; }
+.cstripe i { border-radius: 6px; }
+.cstripe i:nth-child(1) { background: linear-gradient(135deg, #ffd8e1, #d4668d); }
+.cstripe i:nth-child(2) { background: linear-gradient(135deg, #ffc4d0, #ec5f86); }
+.cstripe i:nth-child(3) { background: linear-gradient(135deg, #ffd4c2, #f07f68); }
+.btn.secondary.big { margin-top: 0; }

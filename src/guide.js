@@ -32,7 +32,7 @@ function mix(a, b, t) {
 // tx/ty = donde queda la punta del pie respecto al tobillo, k = cuanto se abre la rodilla)
 // al / ar = brazos (a = angulo del brazo, f = angulo del antebrazo; 0 = abajo, 90 = al lado, 180 = arriba)
 const BASE = {
-  hip: 150, lean: 0, tilt: 0, shrug: 0,
+  hip: 150, lean: 0, tilt: 0, shrug: 0, spin: 0,
   l: { x: 7, y: 272, tx: 12, ty: 8, k: 1 },
   r: { x: 7, y: 272, tx: 12, ty: 8, k: 1 },
   al: { a: 14, f: -2 },
@@ -94,6 +94,32 @@ const P = {
   celebDown: pose({ hip: 152, ...both(ARMS.haut) })
 };
 const withArms = (base, arm) => merge(base, both(arm));
+const RET_REL = (side) => ({ [side]: { x: 8, y: 193, tx: 0, ty: 14, k: 1 } });
+const ON_DEMI = { y: 258, tx: 3, ty: 22 };
+const Q2 = {
+  grandplie: pose({ hip: 204, l: { k: 0.6, tx: 9, ty: 13 }, r: { k: 0.6, tx: 9, ty: 13 }, ...both(ARMS.open) }),
+  standOpen: pose(both(ARMS.open)),
+  fonduInR: pose({ hip: 166, lean: -3, l: { k: 0.45 }, r: { x: 9, y: 246, tx: 1, ty: 12, k: 1 }, ...both(ARMS.sec) }),
+  fonduOutR: pose({ lean: -5, r: { ...straight(40), tx: 9, ty: 14, k: 0.1 }, ...both(ARMS.sec) }),
+  fonduInL: pose({ hip: 166, lean: 3, r: { k: 0.45 }, l: { x: 9, y: 246, tx: 1, ty: 12, k: 1 }, ...both(ARMS.sec) }),
+  fonduOutL: pose({ lean: 5, l: { ...straight(40), tx: 9, ty: 14, k: 0.1 }, ...both(ARMS.sec) }),
+  tenduSR: pose({ lean: -3, r: LEGSIDE(17), ...both(ARMS.sec) }),
+  tenduSL: pose({ lean: 3, l: LEGSIDE(17), ...both(ARMS.sec) }),
+  battR: pose({ lean: -7, r: { ...straight(68), tx: 10, ty: 10, k: 0.05 }, ...both(ARMS.sec) }),
+  battL: pose({ lean: 7, l: { ...straight(68), tx: 10, ty: 10, k: 0.05 }, ...both(ARMS.sec) }),
+  echRel: pose({ hip: 140, l: { x: 36, ...ON_DEMI }, r: { x: 36, ...ON_DEMI }, ...both(ARMS.sec) }),
+  pliePrep: pose({ hip: 176, l: { k: 0.55 }, r: { k: 0.55 }, al: { ...ARMS.sec }, ar: { ...ARMS.prem } }),
+  pirR: pose({ hip: 136, l: { ...ON_DEMI }, ...RET_REL('r'), ...both(ARMS.prem) }),
+  develR: pose({ lean: -6, r: { ...straight(55), tx: 10, ty: 10, k: 0.05 }, ...both(ARMS.sec) }),
+  develL: pose({ lean: 6, l: { ...straight(55), tx: 10, ty: 10, k: 0.05 }, ...both(ARMS.sec) }),
+  retSR: pose({ lean: -4, r: { x: 8, y: 207, tx: 0, ty: 14, k: 1 }, ...both(ARMS.sec) }),
+  retSL: pose({ lean: 4, l: { x: 8, y: 207, tx: 0, ty: 14, k: 1 }, ...both(ARMS.sec) }),
+  swayL: pose({ hip: 160, lean: -10, tilt: -8, l: { k: 0.5 }, r: { x: 14, ...ON_DEMI, y: 262 }, al: { a: 70, f: 60 }, ar: { a: 45, f: -60 } }),
+  swayR: pose({ hip: 160, lean: 10, tilt: 8, r: { k: 0.5 }, l: { x: 14, ...ON_DEMI, y: 262 }, ar: { a: 70, f: 60 }, al: { a: 45, f: -60 } }),
+  jumpOpen: pose({ hip: 116, l: { x: 30, y: 236, tx: 3, ty: 20 }, r: { x: 30, y: 236, tx: 3, ty: 20 }, ...both(ARMS.open) }),
+  plie2open: pose({ hip: 180, l: { x: 40, k: 0.55 }, r: { x: 40, k: 0.55 }, ...both(ARMS.open) })
+};
+Q2.pirRspin = merge(Q2.pirR, { spin: 1 });
 const A = (name) => ARMS[name];
 
 /* ---------- animaciones: [compas, pose], ciclo de `beats` compases ---------- */
@@ -135,7 +161,16 @@ export const ANIMS = {
   squat: { beats: 8, keys: [[0, P.parPrem], [4, P.squat], [8, P.parPrem]] },
   retire: { beats: 16, keys: [[0, P.stand_sec], [2, P.retR], [7, P.retR], [9, P.stand_sec], [10, P.stand_sec], [12, P.retL], [15, P.retL], [16, P.stand_sec]] },
   neck: { beats: 8, keys: [[0, P.stand], [2, P.tiltL], [4, P.stand], [6, P.tiltR], [8, P.stand]] },
-  shrug: { beats: 4, keys: [[0, P.stand], [1, P.shrug], [2, P.stand], [4, P.stand]] }
+  shrug: { beats: 4, keys: [[0, P.stand], [1, P.shrug], [2, P.stand], [4, P.stand]] },
+  grandplie: { beats: 16, keys: [[0, Q2.standOpen], [4, P.plie1open], [8, Q2.grandplie], [12, P.plie1open], [16, Q2.standOpen]] },
+  fondu: { beats: 16, keys: [[0, P.stand_sec], [2, Q2.fonduInR], [5, Q2.fonduOutR], [8, P.stand_sec], [10, Q2.fonduInL], [13, Q2.fonduOutL], [16, P.stand_sec]] },
+  grandbatt: { beats: 8, keys: [[0, P.stand_sec], [1, Q2.tenduSR], [2, Q2.battR], [3, Q2.tenduSR], [4, P.stand_sec], [5, Q2.tenduSL], [6, Q2.battL], [7, Q2.tenduSL], [8, P.stand_sec]] },
+  echappe: { beats: 8, keys: [[0, P.plie1open], [2, Q2.echRel], [4, P.plie1open], [6, Q2.standOpen], [8, P.plie1open]] },
+  pirprep: { beats: 8, keys: [[0, P.stand], [2, Q2.pliePrep], [3, Q2.pirR], [6, Q2.pirR], [7, Q2.pliePrep], [8, P.stand]] },
+  pirouette: { beats: 8, keys: [[0, P.stand], [2, Q2.pliePrep], [3, Q2.pirR], [5, Q2.pirRspin], [6, Q2.pirRspin], [7, Q2.pliePrep], [8, P.stand]] },
+  develop: { beats: 16, keys: [[0, P.stand_sec], [2, Q2.retSR], [5, Q2.develR], [7, Q2.tenduSR], [8, P.stand_sec], [10, Q2.retSL], [13, Q2.develL], [15, Q2.tenduSL], [16, P.stand_sec]] },
+  balance: { beats: 6, keys: [[0, Q2.swayL], [3, Q2.swayR], [6, Q2.swayL]] },
+  allegro: { beats: 8, keys: [[0, Q2.standOpen], [1, P.plie1open], [2, P.jump], [3, P.plie1open], [4, Q2.jumpOpen], [5, Q2.plie2open], [6, Q2.jumpOpen], [7, P.plie1open], [8, Q2.standOpen]] }
 };
 
 function sample(anim, beat) {
@@ -274,6 +309,9 @@ export function createGuide(container) {
 
   function draw(p) {
     const c = compute(p, Math.sin(clock / 650) * 1.4);
+    const sx = Math.cos(2 * Math.PI * (p.spin || 0));
+    const sxs = Math.abs(sx) < 0.08 ? (sx < 0 ? -0.08 : 0.08) : sx;
+    g.setAttribute('transform', p.spin ? `translate(${CX} 0) scale(${sxs.toFixed(3)} 1) translate(${-CX} 0)` : '');
     [0, 1].forEach((i) => {
       const L = c.legs[i], E = legEls[i];
       set(E.thigh, { x1: L.H.x, y1: L.H.y, x2: L.knee.x, y2: L.knee.y });

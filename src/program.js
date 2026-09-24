@@ -5,28 +5,20 @@
    Al terminar las tres se desbloquea el examen de nivel (pendiente).
    ------------------------------------------------------------------ */
 import { CLASSES } from './data.js';
+import { NEW_EXERCISES, PLANS } from './levels.js';
+import { CARDS_L2, CARDS_L3 } from './theory2.js';
 
 // Biblioteca de ejercicios: todos los ejercicios de las clases, por id.
 export const LIB = {};
 for (const c of CLASSES) for (const e of c.exercises) LIB[e.id] = e;
+for (const e of NEW_EXERCISES) LIB[e.id] = e;
 
 export const LEVELS = [
-  {
-    n: 1, days: 30,
-    name: { es: 'Primeros pasos', en: 'First steps' },
-    desc: { es: 'Postura, posiciones y la barra básica.', en: 'Posture, positions and the basic barre.' }
-  },
-  {
-    n: 2, days: 30,
-    name: { es: 'Barra y centro', en: 'Barre and centre' },
-    desc: { es: 'Más ejercicios de barra, equilibrio y trabajo en el centro.', en: 'More barre work, balance and centre practice.' }
-  },
-  {
-    n: 3, days: 30,
-    name: { es: 'Saltos y giros', en: 'Jumps and turns' },
-    desc: { es: 'Pequeños saltos, preparación de giros y combinaciones.', en: 'Small jumps, turn preparation and combinations.' }
-  }
+  { n: 1, name: { es: 'Inicial', en: 'Beginner' } },
+  { n: 2, name: { es: 'Intermedio', en: 'Intermediate' } },
+  { n: 3, name: { es: 'Avanzado', en: 'Advanced' } }
 ];
+export const MAX_LEVEL = 3;
 
 /* Semanas de cada modalidad */
 const W = (a, b, es, en) => ({ from: a, to: b, name: { es, en } });
@@ -53,7 +45,11 @@ export const WEEKS = {
     W(29, 30, 'Final · Prueba', 'Final · Challenge')
   ]
 };
-export const weekOf = (track, d) => WEEKS[track].find((w) => d >= w.from && d <= w.to);
+const WEEKS_UP = [
+  W(1, 7, 'Semana 1', 'Week 1'), W(8, 14, 'Semana 2', 'Week 2'), W(15, 21, 'Semana 3', 'Week 3'),
+  W(22, 28, 'Semana 4', 'Week 4'), W(29, 30, 'Final', 'Final')
+];
+export const weekOf = (track, d, level = 1) => (level === 1 ? WEEKS[track] : WEEKS_UP).find((w) => d >= w.from && d <= w.to);
 
 /* Planes: cada ejercicio "id:segundos". Dias 7, 14, 21 y 28: repaso (tecnica) o estiramientos (fisico). */
 const TECH_PLAN = [
@@ -277,8 +273,8 @@ const FOCUS = {
     ['Enfoque: espalda larga', 'Focus: long back']
   ]
 };
-function withTitles(days, restTitle, focus, firstTitle) {
-  const seen = new Set();
+function withTitles(days, restTitle, focus, firstTitle, known = []) {
+  const seen = new Set(known);
   return days.map((d) => {
     const fresh = d.exercises.filter((e) => !seen.has(e.id));
     d.exercises.forEach((e) => seen.add(e.id));
@@ -294,21 +290,65 @@ function withTitles(days, restTitle, focus, firstTitle) {
   });
 }
 
-export const TRACKS = {
-  teoria: THEORY30.map((card, i) => {
+function theoryL1() {
+  return THEORY30.map((card, i) => {
     const day = i + 1;
     const r = day >= 4 ? day - 3 : day >= 2 ? day - 1 : 0;   // pregunta de repaso de un dia anterior
     return { day, rest: false, title: card.title, card, review: r ? THEORY30[r - 1].q : null, reviewDay: r };
-  }),
-  tecnica: withTitles(TECH_PLAN.map((line, i) => ({ day: i + 1, rest: REST_DAYS.includes(i + 1), exercises: parse(line) })),
-    { es: 'Repaso de la semana', en: 'Weekly review' }, FOCUS.tecnica,
-    { es: 'Tu primera clase', en: 'Your first class' }),
-  fisico: withTitles(PHYS_PLAN.map((line, i) => ({ day: i + 1, rest: REST_DAYS.includes(i + 1), exercises: parse(line) })),
-    { es: 'Estiramientos', en: 'Stretching' }, FOCUS.fisico,
-    { es: 'Tu primer entrenamiento', en: 'Your first workout' })
+  });
+}
+/* Niveles 2 y 3: 24 tarjetas; los dias 7, 14, 21 y 28 son de repaso, el 29 repaso general y el 30 mini examen. */
+function theoryUp(cards) {
+  const out = [];
+  let k = 0;
+  const seen = [];
+  for (let day = 1; day <= 30; day++) {
+    if ([7, 14, 21, 28].includes(day)) {
+      out.push({ day, rest: true, title: { es: 'Repaso de la semana', en: 'Weekly review' }, quizzes: seen.slice(-6).filter((_, i) => i % 2 === 0 || i === 5).slice(0, 4).map((c) => c.q) });
+    } else if (day === 29) {
+      out.push({ day, rest: true, title: { es: 'Repaso general', en: 'General review' }, quizzes: seen.filter((_, i) => i % 4 === 1).slice(0, 6).map((c) => c.q) });
+    } else if (day === 30) {
+      out.push({ day, rest: true, title: { es: 'Mini examen del nivel', en: 'Level mini quiz' }, quizzes: seen.filter((_, i) => i % 3 === 2).slice(0, 8).map((c) => c.q) });
+    } else {
+      const card = cards[k++];
+      const prev = seen.length >= 3 ? seen[seen.length - 3] : seen[seen.length - 1];
+      out.push({ day, rest: false, title: card.title, card, review: prev ? prev.q : null, reviewDay: prev ? out.find((d) => d.card === prev).day : 0 });
+      seen.push(card);
+    }
+  }
+  return out;
+}
+const mkDays = (plan) => plan.map((line, i) => ({ day: i + 1, rest: REST_DAYS.includes(i + 1), exercises: parse(line) }));
+const REVIEW = { es: 'Repaso de la semana', en: 'Weekly review' };
+const STRETCH = { es: 'Estiramientos', en: 'Stretching' };
+
+export const TRACKS = {
+  teoria: { 1: theoryL1(), 2: theoryUp(CARDS_L2), 3: theoryUp(CARDS_L3) },
+  tecnica: {}, fisico: {}
 };
+const idsOf = (lines) => lines.flatMap((l) => l.trim().split(/\s+/).map((t) => t.split(':')[0]));
+{
+  const T1 = TECH_PLAN, T2 = PLANS.tecnica[2], T3 = PLANS.tecnica[3];
+  TRACKS.tecnica[1] = withTitles(mkDays(T1), REVIEW, FOCUS.tecnica, { es: 'Tu primera clase', en: 'Your first class' });
+  TRACKS.tecnica[2] = withTitles(mkDays(T2), REVIEW, FOCUS.tecnica, { es: 'Primera clase intermedia', en: 'First intermediate class' }, idsOf(T1));
+  TRACKS.tecnica[3] = withTitles(mkDays(T3), REVIEW, FOCUS.tecnica, { es: 'Primera clase avanzada', en: 'First advanced class' }, idsOf(T1.concat(T2)));
+  const F1 = PHYS_PLAN, F2 = PLANS.fisico[2], F3 = PLANS.fisico[3];
+  TRACKS.fisico[1] = withTitles(mkDays(F1), STRETCH, FOCUS.fisico, { es: 'Tu primer entrenamiento', en: 'Your first workout' });
+  TRACKS.fisico[2] = withTitles(mkDays(F2), STRETCH, FOCUS.fisico, { es: 'Primer entrenamiento intermedio', en: 'First intermediate workout' }, idsOf(F1));
+  TRACKS.fisico[3] = withTitles(mkDays(F3), STRETCH, FOCUS.fisico, { es: 'Primer entrenamiento avanzado', en: 'First advanced workout' }, idsOf(F1.concat(F2)));
+}
+
+/* Todas las tarjetas de teoria por nivel (para la sesion combinada). */
+export const CARD_POOL = { 1: THEORY30, 2: CARDS_L2, 3: CARDS_L3 };
+
+/* Ejercicios disponibles por nivel en cada modalidad (para la sesion combinada). */
+export function exercisesUpTo(track, level) {
+  const ids = new Set();
+  for (let l = 1; l <= level; l++) for (const d of TRACKS[track][l]) for (const e of d.exercises) ids.add(e.id);
+  return [...ids].map((id) => LIB[id]);
+}
 
 export function trackMinutes(track, d) {
-  if (track === 'teoria') return d.review ? 3 : 2;
+  if (track === 'teoria') return d.quizzes ? Math.max(2, Math.ceil(d.quizzes.length / 2)) : d.review ? 3 : 2;
   return Math.max(1, Math.round(d.exercises.reduce((a, e) => a + e.dur, 0) / 60));
 }

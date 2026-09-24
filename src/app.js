@@ -1,5 +1,7 @@
 import { CLASSES, THEORY, classesOf } from './data.js';
-import { TRACKS, TRACK_IDS, LEVELS, weekOf, trackMinutes } from './program.js';
+import { TRACKS, TRACK_IDS, LEVELS, MAX_LEVEL, weekOf, trackMinutes, CARD_POOL, exercisesUpTo } from './program.js';
+import { EXTRA_LESSONS } from './theory2.js';
+const THEORY_ALL = THEORY.concat(EXTRA_LESSONS);
 import { createGuide } from './guide.js';
 import { STR } from './i18n.js';
 import { Ads, Billing, CONFIG, adProfile, isNative } from './ads.js';
@@ -11,14 +13,17 @@ const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } }
 };
-const emptyProg = () => ({ level: 1, tracks: { teoria: {}, tecnica: {}, fisico: {} }, minutes: 0, quizRight: 0 });
+const emptyTrack = (level = 1) => ({ level, dates: {}, passed: [] });
+const emptyProg = () => ({ placed: false, tracks: { teoria: emptyTrack(), tecnica: emptyTrack(), fisico: emptyTrack() }, comboDates: [], minutes: 0, quizRight: 0 });
 
 const state = {
   lang: LS.get('lang', (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en'),
   birth: LS.get('birth', null),
   premium: LS.get('premium', false),
   done: LS.get('done', {}),
-  prog: LS.get('prog3', null) || emptyProg(),
+  prog: LS.get('prog4', null) || emptyProg(),
+  exp: LS.get('exp', { years: null, self: { teoria: null, tecnica: null, fisico: null } }),
+  pending: null,
   testMode: CONFIG.TEST_TOOLS ? LS.get('testMode', false) : false,
   screen: 'home',
   section: 'tecnica',
@@ -31,7 +36,7 @@ const state = {
   changingAge: false,
   lastResult: null
 };
-const saveProg = () => LS.set('prog3', state.prog);
+const saveProg = () => LS.set('prog4', state.prog);
 
 const t = (k, vars) => {
   let s = (STR[state.lang] && STR[state.lang][k]) ?? STR.es[k] ?? k;
@@ -67,8 +72,11 @@ const COLORS = {
 };
 const BLOCK_COLOR = { teoria: 'dusty', tecnica: 'rose', fisico: 'peach' };
 
-/* ================= progreso: una modalidad = un camino de 30 dias ================= */
-const trackDates = (tr) => state.prog.tracks[tr];
+/* ================= progreso: cada modalidad tiene su nivel y su camino de 30 dias ================= */
+const trackOf = (tr) => state.prog.tracks[tr];
+const levelOf = (tr) => trackOf(tr).level;
+const daysOf = (tr) => TRACKS[tr][levelOf(tr)];
+const trackDates = (tr) => trackOf(tr).dates;
 const isDone = (tr, n) => !!trackDates(tr)[n];
 const doneCount = (tr) => Object.keys(trackDates(tr)).length;
 function nextDay(tr) {
@@ -84,9 +92,10 @@ function dayStatus(tr, n) {
   return trackDates(tr)[n - 1] < todayStr() ? 'open' : 'tomorrow';
 }
 const doneToday = (tr) => Object.values(trackDates(tr)).includes(todayStr());
-const levelComplete = () => TRACK_IDS.every(tr => nextDay(tr) > 30);
+const trackFinished = (tr) => nextDay(tr) > 30;
+const allLevelsDone = (tr) => trackOf(tr).passed.includes(MAX_LEVEL);
 function streak() {
-  const dates = new Set(TRACK_IDS.flatMap(tr => Object.values(trackDates(tr))));
+  const dates = new Set(TRACK_IDS.flatMap(tr => Object.values(trackDates(tr))).concat(state.prog.comboDates));
   const d = new Date();
   if (!dates.has(todayStr(d))) d.setDate(d.getDate() - 1);
   let n = 0;
@@ -95,7 +104,27 @@ function streak() {
 }
 const joinList = (arr) => arr.length < 2 ? arr.join('') : arr.slice(0, -1).join(', ') + t('andWord') + arr[arr.length - 1];
 const trackName = (tr) => t('block' + tr[0].toUpperCase() + tr.slice(1));
+const levelName = (n) => L(LEVELS[n - 1].name);
 const TRACK_ANIM = { teoria: 'portdebras', tecnica: 'plie', fisico: 'heelraise' };
+
+/* Edad: las sesiones de menores de 9 anos son un 20 % mas cortas. */
+const durScale = () => ((currentAge() ?? 12) < 9 ? 0.8 : 1);
+const scaleEx = (ex) => ({ ...ex, dur: Math.max(30, Math.round(ex.dur * durScale() / 5) * 5) });
+const dayMins = (tr, d) => tr === 'teoria' ? trackMinutes(tr, d) : Math.max(1, Math.round(trackMinutes(tr, d) * durScale()));
+
+/* Nivel recomendado: mezcla los anos de experiencia con como se ve cada persona. */
+const YEARS_BASE = [1, 1, 2, 2, 3];
+function recommend(exp) {
+  const base = YEARS_BASE[exp.years ?? 0];
+  const out = {};
+  for (const tr of TRACK_IDS) {
+    const self = exp.self[tr] ?? 1;
+    let lvl = Math.floor((base + self) / 2 + 0.25);
+    if (tr === 'tecnica' && exp.years === 0) lvl = 1;        // sin experiencia, la tecnica empieza por el principio
+    out[tr] = Math.max(1, Math.min(MAX_LEVEL, lvl));
+  }
+  return out;
+}
 
 /* ================= audio ================= */
 const audio = { ctx: null, metro: null };
@@ -141,7 +170,7 @@ async function keepAwake(on) {
 /* ================= anuncios ================= */
 function setAdHeight(h) { document.documentElement.style.setProperty('--ad-h', (h || 0) + 'px'); }
 Ads.onHeight = setAdHeight;
-const AD_SCREENS = ['home', 'section', 'detail', 'day', 'dayDone', 'finish', 'exam', 'settings'];
+const AD_SCREENS = ['home', 'section', 'detail', 'day', 'dayDone', 'finish', 'exam', 'settings', 'combo'];
 const screenWantsAds = () => AD_SCREENS.includes(state.screen);
 async function syncAds() {
   const want = !state.premium && state.birth && screenWantsAds();
@@ -186,6 +215,7 @@ const S = {
 
 function buildTrackSteps(tr, d) {
   if (tr === 'teoria') {
+    if (d.quizzes) return d.quizzes.map(q => ({ type: 'quiz', block: 'teoria', q }));
     const steps = [
       { type: 'card', block: 'teoria', card: d.card },
       { type: 'quiz', block: 'teoria', q: d.card.q }
@@ -193,11 +223,11 @@ function buildTrackSteps(tr, d) {
     if (d.review) steps.push({ type: 'quiz', block: 'teoria', q: d.review, review: d.reviewDay });
     return steps;
   }
-  return d.exercises.map(ex => ({ type: 'ex', block: tr, ex }));
+  return d.exercises.map(ex => ({ type: 'ex', block: tr, ex: scaleEx(ex) }));
 }
 
 function startTrackDay(tr, n) {
-  const d = TRACKS[tr][n - 1];
+  const d = daysOf(tr)[n - 1];
   Object.assign(S, { kind: 'day', track: tr, ref: n, steps: buildTrackSteps(tr, d), i: 0, answers: {} });
   ensureAudio(); keepAwake(true);
   go('session');
@@ -205,7 +235,38 @@ function startTrackDay(tr, n) {
 }
 function startClass(id) {
   const c = getClass(id);
-  Object.assign(S, { kind: 'class', ref: id, steps: c.exercises.map(ex => ({ type: 'ex', block: c.section, ex })), i: 0, answers: {} });
+  Object.assign(S, { kind: 'class', ref: id, steps: c.exercises.map(ex => ({ type: 'ex', block: c.section, ex: scaleEx(ex) })), i: 0, answers: {} });
+  ensureAudio(); keepAwake(true);
+  go('session');
+  enterStep(0);
+}
+
+/* Sesion combinada: teoria + tecnica + fisico, distinta cada vez. */
+const shuffle = (a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+function buildCombo() {
+  const lt = levelOf('teoria');
+  const pool = [];
+  for (let l = 1; l <= lt; l++) pool.push(...CARD_POOL[l]);
+  const card = shuffle(pool)[0];
+  const tech = exercisesUpTo('tecnica', levelOf('tecnica')).filter(e => e.id !== 'warmup' && e.id !== 'bow');
+  const phys = exercisesUpTo('fisico', levelOf('fisico'));
+  const strength = phys.filter(e => e.anim !== 'coach' || ['plank', 'plankfull', 'sideplank', 'bridge', 'bridge1', 'deadbug', 'superman'].includes(e.id)).filter(e => e.id !== 'f-warm');
+  const stretch = phys.filter(e => ['butterfly', 'fold', 'quad', 'cobra', 'child', 'feet', 'lunge', 'hamstring', 'neck'].includes(e.id));
+  const withDur = (e, d) => scaleEx({ ...e, dur: d });
+  const steps = [
+    { type: 'card', block: 'teoria', card },
+    { type: 'quiz', block: 'teoria', q: card.q },
+    { type: 'ex', block: 'tecnica', ex: withDur(LIB_WARM, 90) },
+    ...shuffle(tech).slice(0, 4).map(e => ({ type: 'ex', block: 'tecnica', ex: withDur(e, 120) })),
+    ...shuffle(strength).slice(0, 2).map(e => ({ type: 'ex', block: 'fisico', ex: withDur(e, 90) })),
+    ...shuffle(stretch).slice(0, 1).map(e => ({ type: 'ex', block: 'fisico', ex: withDur(e, 90) }))
+  ];
+  return steps;
+}
+const LIB_WARM = CLASSES.flatMap(c => c.exercises).find(e => e.id === 'warmup');
+const comboMinutes = (steps) => Math.round((steps.filter(s => s.type === 'ex').reduce((a, s) => a + s.ex.dur, 0) + 60) / 60);
+function startCombo(steps) {
+  Object.assign(S, { kind: 'combo', ref: null, steps, i: 0, answers: {} });
   ensureAudio(); keepAwake(true);
   go('session');
   enterStep(0);
@@ -270,15 +331,21 @@ function finishSession() {
   stopSession();
   if (S.kind === 'day') {
     const tr = S.track, n = S.ref;
-    const d = TRACKS[tr][n - 1];
+    const d = daysOf(tr)[n - 1];
     const first = !isDone(tr, n);
     if (first) trackDates(tr)[n] = todayStr();
-    state.prog.minutes += trackMinutes(tr, d);
+    state.prog.minutes += dayMins(tr, d);
     const qs = S.steps.map((st, i) => st.type === 'quiz' ? (S.answers[i] === st.q.answer) : null).filter(v => v !== null);
     const right = qs.filter(Boolean).length;
     state.prog.quizRight += right;
     saveProg();
     state.lastResult = { tr, n, first, right, total: qs.length };
+    go('dayDone');
+  } else if (S.kind === 'combo') {
+    if (!state.prog.comboDates.includes(todayStr())) state.prog.comboDates.push(todayStr());
+    state.prog.minutes += comboMinutes(S.steps);
+    saveProg();
+    state.lastResult = { combo: true, mins: comboMinutes(S.steps) };
     go('dayDone');
   } else {
     state.done[S.ref] = (state.done[S.ref] || 0) + 1;
@@ -290,6 +357,7 @@ function finishSession() {
 
 function leaveSession() {
   if (S.kind === 'day') go('day', { track: S.track, dayN: S.ref });
+  else if (S.kind === 'combo') go('combo');
   else go('detail', { classId: S.ref });
 }
 
@@ -400,7 +468,7 @@ function renderAge() {
     LS.set('birth', state.birth);
     const wasChanging = state.changingAge;
     state.changingAge = false;
-    initServices(true).then(() => go(wasChanging ? 'settings' : 'home'));
+    initServices(true).then(() => go(wasChanging ? 'settings' : (state.prog.placed ? 'home' : 'exp')));
   };
   const b = document.getElementById('ageBack');
   if (b) b.onclick = () => { state.changingAge = false; go('settings'); };
@@ -417,10 +485,100 @@ function bindLang() {
   });
 }
 
+/* ================= alta: experiencia y autoevaluacion ================= */
+function onbHead(step) {
+  const back = step > 1 || state.changingLevel ? `<button class="icon-btn" id="onbBack" aria-label="${t('back')}">${backSvg()}</button>` : '<span class="spacer"></span>';
+  return `<header class="topbar">${back}<span class="progress-text">${t('onbStep', { n: step, m: 3 })}</span><span class="spacer"></span></header>
+    <div class="sbar"><i style="width:${Math.round(step / 3 * 100)}%"></i></div>`;
+}
+function renderExp() {
+  const opts = t('yearsOpts');
+  $app.innerHTML = `
+    <main class="screen">
+      ${onbHead(1)}
+      <div class="onb-hero"><div id="guide" class="guide small"></div><div class="bubble">${t('expBubble')}</div></div>
+      <h1>${t('expTitle')}</h1>
+      <p class="muted">${t('expText')}</p>
+      <div class="opts">${opts.map((o, i) => `<button class="opt ${state.exp.years === i ? 'sel' : ''}" data-y="${i}">${o}</button>`).join('')}</div>
+    </main>`;
+  document.querySelectorAll('[data-y]').forEach(b => b.onclick = () => {
+    state.exp.years = parseInt(b.dataset.y, 10); LS.set('exp', state.exp); go('self');
+  });
+  const bk = document.getElementById('onbBack');
+  if (bk) bk.onclick = () => { state.changingLevel = false; go('settings'); };
+  mountGuide('#guide', 'wave', 90);
+}
+function renderSelf() {
+  const q = (tr) => {
+    const opts = t('selfOpts_' + tr);
+    const cur = state.exp.self[tr];
+    return `<section class="selfq">
+      <span class="bchip" style="--c1:${COLORS[BLOCK_COLOR[tr]][0]};--c2:${COLORS[BLOCK_COLOR[tr]][1]}">${trackName(tr)}</span>
+      <h2>${t('selfQ_' + tr)}</h2>
+      <div class="opts">${opts.map((o, i) => `<button class="opt ${cur === i + 1 ? 'sel' : ''}" data-tr="${tr}" data-v="${i + 1}">${o}</button>`).join('')}</div>
+    </section>`;
+  };
+  const ready = TRACK_IDS.every(tr => state.exp.self[tr]);
+  $app.innerHTML = `
+    <main class="screen">
+      ${onbHead(2)}
+      <h1>${t('selfTitle')}</h1>
+      <p class="muted">${t('selfText')}</p>
+      ${TRACK_IDS.map(q).join('')}
+      <button class="btn big" id="selfOk" ${ready ? '' : 'aria-disabled="true"'}>${t('continue')}</button>
+    </main>`;
+  document.querySelectorAll('[data-tr]').forEach(b => b.onclick = () => {
+    state.exp.self[b.dataset.tr] = parseInt(b.dataset.v, 10); LS.set('exp', state.exp);
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  });
+  document.getElementById('selfOk').onclick = () => {
+    if (!TRACK_IDS.every(tr => state.exp.self[tr])) { toast(t('selfMissing')); return; }
+    state.pending = recommend(state.exp);
+    go('placement');
+  };
+  document.getElementById('onbBack').onclick = () => go('exp');
+}
+function renderPlacement() {
+  if (!state.pending) state.pending = recommend(state.exp);
+  const rec = recommend(state.exp);
+  const row = (tr) => `
+    <div class="prow">
+      <span class="bchip" style="--c1:${COLORS[BLOCK_COLOR[tr]][0]};--c2:${COLORS[BLOCK_COLOR[tr]][1]}">${trackName(tr)}</span>
+      <div class="lvl-pick" role="radiogroup" aria-label="${trackName(tr)}">
+        ${LEVELS.map(l => `<button role="radio" aria-checked="${state.pending[tr] === l.n}" class="${state.pending[tr] === l.n ? 'on' : ''}" data-tr="${tr}" data-l="${l.n}"><b>${l.n}</b><small>${L(l.name)}</small>${rec[tr] === l.n ? `<i>${t('recommended')}</i>` : ''}</button>`).join('')}
+      </div>
+    </div>`;
+  $app.innerHTML = `
+    <main class="screen">
+      ${onbHead(3)}
+      <div class="onb-hero"><div id="guide" class="guide small"></div><div class="bubble">${t('placeBubble')}</div></div>
+      <h1>${t('placeTitle')}</h1>
+      <p class="muted">${t('placeText')}</p>
+      <div class="prows">${TRACK_IDS.map(row).join('')}</div>
+      ${state.changingLevel ? `<p class="muted small rule">${t('placeReset')}</p>` : ''}
+      <button class="btn big" id="placeOk">${state.changingLevel ? t('saveLevels') : t('startApp')}</button>
+    </main>`;
+  document.querySelectorAll('[data-l]').forEach(b => b.onclick = () => {
+    state.pending[b.dataset.tr] = parseInt(b.dataset.l, 10);
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  });
+  document.getElementById('placeOk').onclick = () => {
+    for (const tr of TRACK_IDS) {
+      if (!state.prog.placed || levelOf(tr) !== state.pending[tr]) state.prog.tracks[tr] = emptyTrack(state.pending[tr]);
+    }
+    state.prog.placed = true; saveProg();
+    const wasChanging = state.changingLevel;
+    state.changingLevel = false; state.pending = null;
+    go(wasChanging ? 'settings' : 'home');
+  };
+  document.getElementById('onbBack').onclick = () => go('self');
+  mountGuide('#guide', 'celebrate', 90);
+}
+
 /* ================= pantalla: inicio ================= */
 function dayDot(tr, n) {
   const st = dayStatus(tr, n);
-  const d = TRACKS[tr][n - 1];
+  const d = daysOf(tr)[n - 1];
   const isNext = n === nextDay(tr);
   const cls = ['dot', st, isNext ? 'next' : '', d.rest ? 'rest' : ''].join(' ');
   const inner = st === 'done' ? checkSvg(15) : `<span>${n}</span>`;
@@ -432,11 +590,12 @@ function modeCard(tr) {
   const [c1, c2] = COLORS[BLOCK_COLOR[tr]];
   const nd = nextDay(tr);
   let status, meta;
-  if (nd > 30) { status = `<em class="mstate done">${checkSvg(13)} ${t('trackDone')}</em>`; meta = t('trackDoneText'); }
+  if (allLevelsDone(tr)) { status = `<em class="mstate done">${checkSvg(13)} ${t('trackDone')}</em>`; meta = t('allLevelsDone'); }
+  else if (nd > 30) { status = `<em class="mstate go">${t('examShort')}</em>`; meta = t('examWaiting', { l: levelOf(tr) }); }
   else {
-    const d = TRACKS[tr][nd - 1];
+    const d = daysOf(tr)[nd - 1];
     const st = dayStatus(tr, nd);
-    meta = `${t('dayWord')} ${nd} · ${trackMinutes(tr, d)} ${t('minutes')} · ${L(d.title)}`;
+    meta = `${t('dayWord')} ${nd} · ${dayMins(tr, d)} ${t('minutes')} · ${L(d.title)}`;
     status = st === 'tomorrow'
       ? `<em class="mstate wait">${checkSvg(13)} ${t('doneTodayShort')}</em>`
       : `<em class="mstate go">${t('startShort')}</em>`;
@@ -444,6 +603,7 @@ function modeCard(tr) {
   return `
     <button class="mode" data-track="${tr}" style="--c1:${c1};--c2:${c2}">
       <span class="mtop"><span class="mname">${trackName(tr)}</span>${status}</span>
+      <span class="mlevel">${t('levelWord')} ${levelOf(tr)} · ${levelName(levelOf(tr))}</span>
       <span class="mmeta">${meta}</span>
       <span class="mbar"><i style="width:${Math.round(doneCount(tr) / 30 * 100)}%"></i></span>
       <span class="mcount">${doneCount(tr)}/30 ${t('daysWord')}</span>
@@ -451,26 +611,24 @@ function modeCard(tr) {
 }
 
 function renderHome() {
-  const lv = LEVELS[0];
-  const all = levelComplete();
   const today = TRACK_IDS.filter(doneToday);
   let bubble, anim;
-  if (all) { bubble = t('hiExam'); anim = 'celebrate'; }
-  else if (today.length === 3) { bubble = t('hiAllToday'); anim = 'celebrate'; }
+  if (today.length === 3) { bubble = t('hiAllToday'); anim = 'celebrate'; }
   else if (today.length) { bubble = t('hiMore', { m: joinList(today.map(trackName)) }); anim = 'coach'; }
-  else if (TRACK_IDS.every(tr => doneCount(tr) === 0)) { bubble = t('hiDay1'); anim = 'wave'; }
+  else if (TRACK_IDS.every(tr => doneCount(tr) === 0) && !state.prog.comboDates.length) { bubble = t('hiStart'); anim = 'wave'; }
   else { bubble = t('hiPick'); anim = 'wave'; }
 
   const mt = state.mapTrack;
   let dots = '';
   for (let n = 1; n <= 30; n++) dots += dayDot(mt, n);
-  const weeks = WEEKS_OF(mt);
-  const levelsHtml = LEVELS.map(l => {
-    const cur = l.n === state.prog.level;
-    return `<div class="lvl ${cur ? 'cur' : 'lockd'}">
-      <span class="lnum">${l.n}</span>
-      <div><strong>${L(l.name)}</strong><span>${cur ? L(l.desc) : t('levelLocked')}</span></div>
-      ${cur ? `<em>${t('levelCurrent')}</em>` : `<em class="lk">${lockSvg(13)}</em>`}
+  const w = weekOf(mt, Math.min(30, nextDay(mt)), levelOf(mt));
+  const fin = trackFinished(mt);
+  const lvRows = TRACK_IDS.map(tr => {
+    const lv = levelOf(tr);
+    return `<div class="lvrow">
+      <strong>${trackName(tr)}</strong>
+      <span class="pips">${LEVELS.map(l => `<i class="${l.n < lv || trackOf(tr).passed.includes(l.n) ? 'done' : l.n === lv ? 'cur' : ''}" title="${L(l.name)}">${l.n}</i>`).join('')}</span>
+      <small>${levelName(lv)}</small>
     </div>`;
   }).join('');
 
@@ -487,13 +645,10 @@ function renderHome() {
       </section>
 
       <section class="level-card">
-        <div class="lc-top">
-          <span class="eyebrow">${t('levelWord')} ${lv.n}</span>
-          <h1>${L(lv.name)}</h1>
-          <p>${t('levelRule')}</p>
-        </div>
+        <span class="eyebrow">${t('yourLevels')}</span>
+        <div class="lvrows">${lvRows}</div>
         <div class="stats">
-          <div><b>${TRACK_IDS.reduce((a, tr) => a + doneCount(tr), 0)}<small>/90</small></b><span>${t('daysDone')}</span></div>
+          <div><b>${TRACK_IDS.reduce((a, tr) => a + doneCount(tr), 0)}</b><span>${t('daysDone')}</span></div>
           <div><b>${flameSvg()} ${streak()}</b><span>${t('streak')}</span></div>
           <div><b>${state.prog.minutes}</b><span>${t('minutesDone')}</span></div>
         </div>
@@ -503,6 +658,10 @@ function renderHome() {
         <h2>${t('whatToday')}</h2>
         <p class="muted small">${t('whatTodaySub')}</p>
         <div class="modes">${TRACK_IDS.map(modeCard).join('')}</div>
+        <button class="combo-card" id="comboBtn">
+          <span class="cstripe"><i></i><i></i><i></i></span>
+          <span><strong>${t('comboTitle')}</strong><small>${t('comboSub')}</small></span>
+        </button>
       </section>
 
       <section class="block">
@@ -510,16 +669,14 @@ function renderHome() {
         <div class="seg" role="tablist">
           ${TRACK_IDS.map(tr => `<button role="tab" aria-selected="${tr === mt}" class="${tr === mt ? 'on' : ''}" data-map="${tr}">${trackName(tr)}</button>`).join('')}
         </div>
-        <div class="map">${weeks}<div class="dots-grid">${dots}</div></div>
-        <button class="exam-row ${all ? 'open' : ''}" id="examRow">
-          <span class="exam-ic">${all ? starSvg(22) : lockSvg(16)}</span>
-          <span><strong>${t('exam')}</strong><small>${all ? t('examReady') : t('examLocked')}</small></span>
+        <div class="map">
+          <p class="wnow"><span class="eyebrow">${t('levelWord')} ${levelOf(mt)} · ${levelName(levelOf(mt))}</span>${L(w.name)}</p>
+          <div class="dots-grid">${dots}</div>
+        </div>
+        <button class="exam-row ${fin ? 'open' : ''}" id="examRow">
+          <span class="exam-ic">${fin ? starSvg(22) : lockSvg(16)}</span>
+          <span><strong>${t('examOf', { m: trackName(mt), l: levelOf(mt) })}</strong><small>${fin ? t('examReadyTrack') : t('examLockedTrack')}</small></span>
         </button>
-      </section>
-
-      <section class="block">
-        <h2>${t('levels')}</h2>
-        <div class="levels">${levelsHtml}</div>
       </section>
 
       <section class="block">
@@ -531,14 +688,15 @@ function renderHome() {
     </main>`;
 
   document.getElementById('setBtn').onclick = () => go('settings');
-  document.getElementById('examRow').onclick = () => go('exam');
+  document.getElementById('examRow').onclick = () => go('exam', { track: mt });
+  document.getElementById('comboBtn').onclick = () => { state.combo = buildCombo(); go('combo'); };
   document.querySelectorAll('[data-track]').forEach(b => b.onclick = () => {
     const tr = b.dataset.track;
     const nd = nextDay(tr);
-    if (nd > 30) { state.mapTrack = tr; toast(t('trackDoneText')); render(); return; }
+    if (nd > 30) { go('exam', { track: tr }); return; }
     go('day', { track: tr, dayN: nd });
   });
-  document.querySelectorAll('[data-map]').forEach(b => b.onclick = () => { state.mapTrack = b.dataset.map; render(); });
+  document.querySelectorAll('[data-map]').forEach(b => b.onclick = () => { state.mapTrack = b.dataset.map; const y = window.scrollY; render(); window.scrollTo(0, y); });
   document.querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
     const n = parseInt(b.dataset.day, 10);
     const st = dayStatus(mt, n);
@@ -550,10 +708,41 @@ function renderHome() {
   mountGuide('#guide', anim, 90);
 }
 
-function WEEKS_OF(tr) {
-  const n = nextDay(tr);
-  const w = weekOf(tr, Math.min(30, n));
-  return `<p class="wnow"><span class="eyebrow">${t('nowIn')}</span>${L(w.name)}</p>`;
+/* ================= pantalla: sesion combinada ================= */
+function renderCombo() {
+  if (!state.combo) state.combo = buildCombo();
+  const steps = state.combo;
+  const card = steps[0].card;
+  const byBlock = (b) => steps.filter(s => s.type === 'ex' && s.block === b);
+  const blk = (tr, body, mins) => {
+    const [c1, c2] = COLORS[BLOCK_COLOR[tr]];
+    return `<section class="dblock" style="--c1:${c1};--c2:${c2}">
+      <header><span class="bchip">${trackName(tr)} · ${t('levelWord')} ${levelOf(tr)}</span>${mins ? `<small>${mins} ${t('minutes')}</small>` : ''}</header>${body}</section>`;
+  };
+  const m = (arr) => Math.max(1, Math.round(arr.reduce((a, s) => a + s.ex.dur, 0) / 60));
+  $app.innerHTML = `
+    <main class="screen">
+      <header class="topbar"><button class="icon-btn" id="backBtn" aria-label="${t('back')}">${backSvg()}</button><strong>${t('comboTitle')}</strong><span class="spacer"></span></header>
+      <div class="day-hero">
+        <div id="guide" class="guide small"></div>
+        <div>
+          <span class="eyebrow">${t('comboEyebrow')}</span>
+          <h1>${t('comboHead')}</h1>
+          <p class="muted">${comboMinutes(steps)} ${t('minutes')}</p>
+        </div>
+      </div>
+      <button class="btn big" id="startBtn">${t('comboStart')}</button>
+      <button class="btn secondary big" id="shuffleBtn">${t('comboShuffle')}</button>
+      ${blk('teoria', `<p class="bline">${t('tlCard')}: <strong>${L(card.title)}</strong></p>`, 1)}
+      ${blk('tecnica', exList(byBlock('tecnica').map(s => s.ex)), m(byBlock('tecnica')))}
+      ${blk('fisico', exList(byBlock('fisico').map(s => s.ex)), m(byBlock('fisico')))}
+      <p class="muted small rule">${t('comboRule')}</p>
+      ${adSlotHtml()}
+    </main>`;
+  document.getElementById('backBtn').onclick = () => go('home');
+  document.getElementById('startBtn').onclick = () => startCombo(steps);
+  document.getElementById('shuffleBtn').onclick = () => { state.combo = buildCombo(); render(); };
+  mountGuide('#guide', 'balance', 90);
 }
 
 /* ================= pantalla: dia de una modalidad ================= */
@@ -562,20 +751,22 @@ function exList(list) {
 }
 function renderDay() {
   const tr = state.track, n = state.dayN;
-  const d = TRACKS[tr][n - 1];
-  const w = weekOf(tr, n);
+  const lv = levelOf(tr);
+  const d = daysOf(tr)[n - 1];
+  const w = weekOf(tr, n, lv);
   const st = dayStatus(tr, n);
   const [c1, c2] = COLORS[BLOCK_COLOR[tr]];
   let body;
   if (tr === 'teoria') {
     body = `<section class="dblock" style="--c1:${c1};--c2:${c2}">
       <ul class="plain tl">
+        ${d.quizzes ? `<li>${t('tlQuizzes', { n: d.quizzes.length })}</li>` : `
         <li>${t('tlCard')}: <strong>${L(d.card.title)}</strong></li>
         <li>${t('tlQuiz')}</li>
-        ${d.review ? `<li>${t('tlReview', { n: d.reviewDay })}</li>` : ''}
+        ${d.review ? `<li>${t('tlReview', { n: d.reviewDay })}</li>` : ''}`}
       </ul></section>`;
   } else {
-    body = `<section class="dblock" style="--c1:${c1};--c2:${c2}">${exList(d.exercises)}</section>`;
+    body = `<section class="dblock" style="--c1:${c1};--c2:${c2}">${exList(d.exercises.map(scaleEx))}</section>`;
   }
   $app.innerHTML = `
     <main class="screen">
@@ -583,10 +774,10 @@ function renderDay() {
       <div class="day-hero" style="--c1:${c1};--c2:${c2}">
         <div id="guide" class="guide small"></div>
         <div>
-          <span class="bchip">${trackName(tr)}</span>
+          <span class="bchip">${trackName(tr)} · ${t('levelWord')} ${lv}</span>
           <span class="eyebrow wk">${L(w.name)}</span>
           <h1>${L(d.title)}</h1>
-          <p class="muted">${trackMinutes(tr, d)} ${t('minutes')}${isDone(tr, n) ? ' · ' + t('doneOnce') : ''}</p>
+          <p class="muted">${dayMins(tr, d)} ${t('minutes')}${isDone(tr, n) ? ' · ' + t('doneOnce') : ''}</p>
         </div>
       </div>
       ${st === 'done' || st === 'open' ? `<button class="btn big" id="startBtn">${isDone(tr, n) ? t('repeatDay', { n }) : t('startDay', { n })}</button>` : `<div class="wait"><strong>${t('comeBack', { n })}</strong><span>${t('comeBackText')}</span></div>`}
@@ -601,7 +792,8 @@ function renderDay() {
   document.getElementById('backBtn').onclick = () => go('home', { mapTrack: tr });
   const sb = document.getElementById('startBtn');
   if (sb) sb.onclick = () => startTrackDay(tr, n);
-  mountGuide('#guide', d.rest ? (tr === 'fisico' ? 'neck' : 'posture') : TRACK_ANIM[tr], 70);
+  const firstAnim = tr === 'teoria' ? 'portdebras' : (d.exercises.find(e => !['warmup', 'f-warm'].includes(e.id)) || d.exercises[0]).anim;
+  mountGuide('#guide', firstAnim || TRACK_ANIM[tr], 70);
 }
 
 /* ================= pantalla: sesion ================= */
@@ -705,47 +897,74 @@ function renderSession() {
 /* ================= pantalla: dia completado ================= */
 function renderDayDone() {
   const r = state.lastResult || { tr: state.track, n: state.dayN, right: 0, total: 0 };
+  if (r.combo) {
+    $app.innerHTML = `
+      <main class="screen center">
+        <div class="guide hero-size" id="guide"></div>
+        <div class="stars">${starSvg()}${starSvg()}${starSvg()}</div>
+        <h1>${t('comboDone')}</h1>
+        <p>${t('comboDoneText', { m: r.mins })}</p>
+        <button class="btn big" id="againBtn">${t('comboAgain')}</button>
+        <button class="btn secondary big" id="homeBtn">${t('backHome')}</button>
+        ${adSlotHtml()}
+      </main>`;
+    document.getElementById('homeBtn').onclick = () => go('home');
+    document.getElementById('againBtn').onclick = () => { state.combo = buildCombo(); go('combo'); };
+    mountGuide('#guide', 'celebrate', 110);
+    return;
+  }
   const nd = nextDay(r.tr);
   const others = TRACK_IDS.filter(tr => tr !== r.tr && nextDay(tr) <= 30 && dayStatus(tr, nextDay(tr)) === 'open');
-  const all = levelComplete();
   $app.innerHTML = `
     <main class="screen center">
       <div class="guide hero-size" id="guide"></div>
       <div class="stars">${starSvg()}${starSvg()}${starSvg()}</div>
       <h1>${t('dayDoneTitle', { n: r.n, m: trackName(r.tr) })}</h1>
       ${r.total ? `<p class="pill ${r.right === r.total ? 'ok' : 'no'}">${t('quizScore2', { r: r.right, t: r.total })}</p>` : ''}
-      <p>${nd > 30 ? t('trackDoneMsg', { m: trackName(r.tr) }) : t('dayDoneNext2', { n: nd, m: trackName(r.tr) })}</p>
-      ${others.length && !all ? `<p class="muted">${t('tryOther', { m: others.map(trackName).join(t('orWord')) })}</p>` : ''}
-      ${all ? `<button class="btn big" id="examBtn">${t('toExam')}</button>` : ''}
-      <button class="btn ${all ? 'secondary' : ''} big" id="homeBtn">${t('backHome')}</button>
+      <p>${nd > 30 ? t('trackDoneMsg2', { m: trackName(r.tr), l: levelOf(r.tr) }) : t('dayDoneNext2', { n: nd, m: trackName(r.tr) })}</p>
+      ${others.length ? `<p class="muted">${t('tryOther', { m: joinList(others.map(trackName)).replace(t('andWord'), t('orWord')) })}</p>` : ''}
+      ${nd > 30 ? `<button class="btn big" id="examBtn">${t('toExam')}</button>` : ''}
+      <button class="btn ${nd > 30 ? 'secondary' : ''} big" id="homeBtn">${t('backHome')}</button>
       ${adSlotHtml()}
     </main>`;
   document.getElementById('homeBtn').onclick = () => go('home', { mapTrack: r.tr });
   const eb = document.getElementById('examBtn');
-  if (eb) eb.onclick = () => go('exam');
+  if (eb) eb.onclick = () => go('exam', { track: r.tr });
   mountGuide('#guide', 'celebrate', 110);
 }
 
-/* ================= pantalla: examen (pendiente) ================= */
+/* ================= pantalla: examen de una modalidad (pendiente) ================= */
 function renderExam() {
-  const all = levelComplete();
-  const rows = TRACK_IDS.map(tr => `<li><strong>${trackName(tr)}</strong>: ${doneCount(tr)}/30 ${nextDay(tr) > 30 ? checkSvg(14) : ''}</li>`).join('');
+  const tr = state.track;
+  const lv = levelOf(tr);
+  const fin = trackFinished(tr);
+  const top = allLevelsDone(tr);
   $app.innerHTML = `
     <main class="screen">
-      <header class="topbar"><button class="icon-btn" id="backBtn" aria-label="${t('back')}">${backSvg()}</button><strong>${t('exam')}</strong><span class="spacer"></span></header>
+      <header class="topbar"><button class="icon-btn" id="backBtn" aria-label="${t('back')}">${backSvg()}</button><strong>${t('examOf', { m: trackName(tr), l: lv })}</strong><span class="spacer"></span></header>
       <div class="stage"><div id="guide" class="guide"></div></div>
       <section class="lesson-card">
-        <span class="eyebrow">${all ? t('levelSoon') : t('locked')}</span>
-        <h1>${all ? t('examReady') : t('examLocked')}</h1>
-        <ul class="plain">${rows}</ul>
-        <p>${t('examSoon')}</p>
+        <span class="eyebrow">${top ? t('trackDone') : fin ? t('levelSoon') : t('locked')}</span>
+        <h1>${top ? t('allLevelsDone') : fin ? t('examReadyTrack') : t('examLockedTrack')}</h1>
+        <p><strong>${trackName(tr)}</strong> · ${t('levelWord')} ${lv} (${levelName(lv)}): ${doneCount(tr)}/30 ${t('daysWord')}</p>
+        ${top ? '' : `<p>${t('examSoon2', { next: lv < MAX_LEVEL ? levelName(lv + 1) : '' })}</p>
         <p><strong>${t('examWill')}</strong></p>
-        <ul class="plain">${t('examList').map(x => `<li>${x}</li>`).join('')}</ul>
+        <ul class="plain">${t('examList_' + tr).map(x => `<li>${x}</li>`).join('')}</ul>`}
       </section>
+      ${fin && !top && state.testMode ? `<button class="btn big" id="passBtn">${t('testPass')}</button>` : ''}
       ${adSlotHtml()}
     </main>`;
-  document.getElementById('backBtn').onclick = () => go('home');
-  mountGuide('#guide', all ? 'celebrate' : 'coach', 90);
+  document.getElementById('backBtn').onclick = () => go('home', { mapTrack: tr });
+  const pb = document.getElementById('passBtn');
+  if (pb) pb.onclick = () => {
+    const passed = trackOf(tr).passed.concat(lv);
+    if (lv < MAX_LEVEL) state.prog.tracks[tr] = { ...emptyTrack(lv + 1), passed };
+    else trackOf(tr).passed = passed;
+    saveProg();
+    toast(lv < MAX_LEVEL ? t('levelUp', { m: trackName(tr), l: lv + 1 }) : t('allLevelsDone'));
+    go('home', { mapTrack: tr });
+  };
+  mountGuide('#guide', fin ? 'celebrate' : 'coach', 90);
 }
 
 /* ================= practica libre ================= */
@@ -762,7 +981,7 @@ function classCard(c) {
     </button>`;
 }
 function sectionStats(sec) {
-  if (sec === 'teoria') return { count: THEORY.length, mins: THEORY.reduce((a, l) => a + l.mins, 0), unit: t('lessons') };
+  if (sec === 'teoria') return { count: THEORY_ALL.length, mins: THEORY_ALL.reduce((a, l) => a + l.mins, 0), unit: t('lessons') };
   const cs = classesOf(sec);
   return { count: cs.length, mins: cs.reduce((a, c) => a + totalMin(c), 0), unit: t('classesWord') };
 }
@@ -791,7 +1010,7 @@ function lessonCard(l) {
 function renderSection() {
   const sec = state.section;
   const [c1, c2] = COLORS[BLOCK_COLOR[sec]];
-  const items = sec === 'teoria' ? THEORY.map(lessonCard).join('') : classesOf(sec).map(classCard).join('');
+  const items = sec === 'teoria' ? THEORY_ALL.map(lessonCard).join('') : classesOf(sec).map(classCard).join('');
   const st = sectionStats(sec);
   $app.innerHTML = `
     <main class="screen">
@@ -855,7 +1074,7 @@ function openLesson(id) {
   go('lesson', { lessonId: id });
 }
 function renderLesson() {
-  const l = THEORY.find(x => x.id === state.lessonId);
+  const l = THEORY_ALL.find(x => x.id === state.lessonId);
   const [c1, c2] = COLORS.dusty;
   const head = (label, total, cur) => `
     <header class="topbar">
@@ -946,6 +1165,7 @@ function renderSettings() {
           <span><strong>${t('testMode')}</strong><small>${t('testModeText')}</small></span>
           <input type="checkbox" id="testSw" ${state.testMode ? 'checked' : ''}>
         </label>` : ''}
+        <button class="link block" id="levelBtn">${t('changeLevel')}</button>
         <button class="link block danger" id="resetBtn">${t('resetProgress')}</button>
       </section>
       <section class="card set">
@@ -969,8 +1189,9 @@ function renderSettings() {
   if (rs) rs.onclick = async () => { const ok = await Billing.restore(); if (!ok) toast(t('purchaseUnavailable')); };
   const sw = document.getElementById('testSw');
   if (sw) sw.onchange = () => { state.testMode = sw.checked; LS.set('testMode', state.testMode); };
+  document.getElementById('levelBtn').onclick = () => { state.changingLevel = true; state.pending = { teoria: levelOf('teoria'), tecnica: levelOf('tecnica'), fisico: levelOf('fisico') }; go('exp'); };
   document.getElementById('resetBtn').onclick = () => confirmBox(t('resetAsk'), t('resetYes'), t('cancel'), () => {
-    state.prog = emptyProg(); saveProg(); toast(t('resetDone'));
+    state.prog = emptyProg(); saveProg(); toast(t('resetDone')); go('exp');
   });
   document.getElementById('ageBtn').onclick = () => {
     const open = () => go('age', { changingAge: true });
@@ -985,8 +1206,13 @@ function render() {
   clearToasts();
   document.documentElement.lang = state.lang;
   if (!state.birth && state.screen !== 'age') state.screen = 'age';
+  else if (state.birth && !state.prog.placed && !['age', 'exp', 'self', 'placement'].includes(state.screen)) state.screen = 'exp';
   switch (state.screen) {
     case 'age': renderAge(); break;
+    case 'exp': renderExp(); break;
+    case 'self': renderSelf(); break;
+    case 'placement': renderPlacement(); break;
+    case 'combo': renderCombo(); break;
     case 'day': renderDay(); break;
     case 'session': renderSession(); break;
     case 'dayDone': renderDayDone(); break;
@@ -1024,6 +1250,9 @@ try {
     else if (s === 'home' || s === 'age') CapApp.exitApp();
     else if (s === 'detail') go('section', { section: (getClass(state.classId) || {}).section || 'tecnica' });
     else if (s === 'lesson') go('section', { section: 'teoria' });
+    else if (s === 'self') go('exp');
+    else if (s === 'placement') go('self');
+    else if (s === 'exp') { if (state.changingLevel) { state.changingLevel = false; go('settings'); } else CapApp.exitApp(); }
     else go('home');
   });
 } catch { /* vista previa web */ }
@@ -1036,4 +1265,4 @@ render();
 initServices(false).then(syncAds);
 Billing.init();
 
-if (!isNative()) window.__plie = { state, go, startTrackDay, startClass, S, TRACKS };
+if (!isNative()) window.__plie = { state, go, startTrackDay, startClass, S, TRACKS, saveProg };

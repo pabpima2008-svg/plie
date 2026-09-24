@@ -18,6 +18,8 @@ import {
    ------------------------------------------------------------------ */
 export const CONFIG = {
   TEST_MODE: true,
+  // Muestra en Ajustes el interruptor 'Modo prueba' (desbloquea todos los dias). Ponlo a false antes de publicar.
+  TEST_TOOLS: true,
   // ID de banner de prueba oficial de Google (no genera ingresos):
   BANNER_ID_TEST: 'ca-app-pub-3940256099942544/6300978111',
   BANNER_ID_REAL: 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY',

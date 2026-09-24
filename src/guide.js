@@ -6,7 +6,7 @@
 const NS = 'http://www.w3.org/2000/svg';
 const CX = 100, FLOOR = 280;
 const THIGH = 62, SHIN = 60, UPPER = 38, FORE = 36;
-const HIPW = 12, SHW = 20, TORSO = 70;
+const HIPW = 13, SHW = 21, TORSO = 64;
 const LEG = THIGH + SHIN - 0.02;
 const rad = (d) => d * Math.PI / 180;
 
@@ -187,7 +187,7 @@ function compute(p, breath) {
     return { S, E, H: Hh };
   });
   const t = rad(p.tilt);
-  out.head = { x: shX + Math.sin(t) * 26, y: shY - 4 - Math.cos(t) * 26 };
+  out.head = { x: shX + Math.sin(t) * 38, y: shY - 4 - Math.cos(t) * 38 };
   out.tiltRad = t;
   // sombra del suelo: mas pequena cuando salta
   out.shadowScale = Math.max(0.55, Math.min(1.15, 1 - (150 - p.hip) / 140));
@@ -195,7 +195,7 @@ function compute(p, breath) {
   return out;
 }
 
-/* ---------- dibujo ---------- */
+/* ---------- dibujo (estilo caricatura) ---------- */
 function el(tag, attrs = {}, parent) {
   const e = document.createElementNS(NS, tag);
   for (const k in attrs) e.setAttribute(k, attrs[k]);
@@ -203,74 +203,119 @@ function el(tag, attrs = {}, parent) {
   return e;
 }
 
-export function createGuide(container, { eyes = true } = {}) {
+// falda de tul con ondas (coordenadas locales, centrada en la cadera)
+function tutuPath(w, top, base, bumps, depth) {
+  let d = `M${-w} ${top} Q0 ${top - 12} ${w} ${top} L${w + 2} ${base}`;
+  const step = (2 * w + 4) / bumps;
+  let x = w + 2;
+  for (let i = 0; i < bumps; i++) {
+    const nx = x - step;
+    d += ` Q${(x - step / 2).toFixed(1)} ${base + depth} ${nx.toFixed(1)} ${base}`;
+    x = nx;
+  }
+  return d + ' Z';
+}
+
+let uid = 0;
+export function createGuide(container) {
   container.innerHTML = '';
-  const svg = el('svg', { viewBox: '-30 -34 260 334', class: 'guide-svg', role: 'img', 'aria-hidden': 'true' });
+  const id = 'g' + (++uid);
+  const svg = el('svg', { viewBox: '-40 -84 280 384', class: 'guide-svg', role: 'img', 'aria-hidden': 'true' });
   const defs = el('defs', {}, svg);
-  const grad = el('linearGradient', { id: 'gfill', x1: '0', y1: '0', x2: '0', y2: '1' }, defs);
-  el('stop', { offset: '0', 'stop-color': '#4b3a66' }, grad);
-  el('stop', { offset: '1', 'stop-color': '#2f2340' }, grad);
-  const ground = el('ellipse', { cx: CX, cy: FLOOR + 3, rx: 48, ry: 6, fill: 'rgba(58,42,64,.18)' }, svg);
-  const g = el('g', { fill: 'url(#gfill)', stroke: 'url(#gfill)', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
+  const body = el('linearGradient', { id: id + 'b', x1: '0', y1: '0', x2: '0', y2: '1' }, defs);
+  el('stop', { offset: '0', 'stop-color': '#6b3457' }, body);
+  el('stop', { offset: '1', 'stop-color': '#40203a' }, body);
+  const tul = el('linearGradient', { id: id + 't', x1: '0', y1: '0', x2: '0', y2: '1' }, defs);
+  el('stop', { offset: '0', 'stop-color': '#ffc2d6' }, tul);
+  el('stop', { offset: '1', 'stop-color': '#f7859f' }, tul);
+  const B = `url(#${id}b)`;
+
+  const ground = el('ellipse', { cx: CX, cy: FLOOR + 4, rx: 50, ry: 7, fill: 'rgba(160, 60, 90, .16)' }, svg);
+  const g = el('g', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
 
   const legEls = [0, 1].map(() => ({
-    thigh: el('line', { 'stroke-width': 13 }, g),
-    shin: el('line', { 'stroke-width': 9 }, g),
-    foot: el('line', { 'stroke-width': 6 }, g)
+    thigh: el('line', { stroke: B, 'stroke-width': 18 }, g),
+    shin: el('line', { stroke: B, 'stroke-width': 14 }, g),
+    shoe: el('line', { stroke: '#f28aa8', 'stroke-width': 11 }, g)
   }));
-  const torso = el('path', { 'stroke-width': 7 }, g);
-  const neck = el('line', { 'stroke-width': 6 }, g);
+  const torso = el('path', { fill: B, stroke: B, 'stroke-width': 10 }, g);
+  const tutuBack = el('path', { d: tutuPath(52, -4, 8, 7, 11), fill: '#f47a98' }, g);
+  const tutuFront = el('path', { d: tutuPath(44, -8, 4, 6, 10), fill: `url(#${id}t)` }, g);
+  const neck = el('line', { stroke: B, 'stroke-width': 11 }, g);
+
+  // cabeza: grupo que se mueve y se inclina entero
+  const headG = el('g', {}, g);
+  el('circle', { cx: 0, cy: -27, r: 12, fill: B }, headG);                  // moño
+  el('path', { d: 'M9 -34 L22 -42 L20 -27 Z M9 -34 L3 -47 L16 -44 Z', fill: '#f5728f', stroke: '#f5728f', 'stroke-width': 3, 'stroke-linejoin': 'round' }, headG); // lazo
+  el('circle', { cx: 9, cy: -35, r: 3.6, fill: '#ff9db6' }, headG);
+  el('circle', { cx: 0, cy: 0, r: 25, fill: B }, headG);                    // cara
+  const eyes = [-9, 9].map((x) => {
+    const eg = el('g', { transform: `translate(${x} -1)` }, headG);
+    const white = el('ellipse', { cx: 0, cy: 0, rx: 6, ry: 7.5, fill: '#fff' }, eg);
+    const pupil = el('circle', { cx: 0.6, cy: 1.2, r: 3.8, fill: '#2a1426' }, eg);
+    const shine = el('circle', { cx: 2, cy: -0.8, r: 1.4, fill: '#fff' }, eg);
+    return { white, pupil, shine };
+  });
+  el('circle', { cx: -15, cy: 10, r: 4.6, fill: '#ff8fb0', opacity: '.8' }, headG);   // mofletes
+  el('circle', { cx: 15, cy: 10, r: 4.6, fill: '#ff8fb0', opacity: '.8' }, headG);
+  const mouth = el('path', { d: 'M-5 11 Q0 16 5 11', fill: 'none', stroke: '#ffd3e0', 'stroke-width': 2.4 }, headG);
+
   const armEls = [0, 1].map(() => ({
-    up: el('line', { 'stroke-width': 8 }, g),
-    fo: el('line', { 'stroke-width': 6 }, g),
-    hand: el('circle', { r: 3.6, stroke: 'none' }, g)
+    up: el('line', { stroke: B, 'stroke-width': 12 }, g),
+    fo: el('line', { stroke: B, 'stroke-width': 10 }, g),
+    hand: el('circle', { r: 6.5, fill: B }, g)
   }));
-  const bun = el('circle', { r: 6, stroke: 'none' }, g);
-  const head = el('circle', { r: 12.5, stroke: 'none' }, g);
-  const eyeEls = eyes ? [0, 1].map(() => el('circle', { r: 2.1, fill: '#fff', stroke: 'none' }, svg)) : [];
   container.appendChild(svg);
 
   const set = (e, o) => { for (const k in o) e.setAttribute(k, (+o[k]).toFixed(1)); };
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  let anim = ANIMS.stand, bpm = 60, t = 0, running = true, last = 0, raf = 0, manual = null;
+  let anim = ANIMS.stand, bpm = 60, t = 0, clock = 0, running = true, last = 0, raf = 0, manual = null, smile = 0;
 
   function draw(p) {
-    const c = compute(p, Math.sin(t / 650) * 1.4);
+    const c = compute(p, Math.sin(clock / 650) * 1.4);
     [0, 1].forEach((i) => {
       const L = c.legs[i], E = legEls[i];
       set(E.thigh, { x1: L.H.x, y1: L.H.y, x2: L.knee.x, y2: L.knee.y });
       set(E.shin, { x1: L.knee.x, y1: L.knee.y, x2: L.ankle.x, y2: L.ankle.y });
-      set(E.foot, { x1: L.ankle.x, y1: L.ankle.y, x2: L.toe.x, y2: L.toe.y });
+      set(E.shoe, { x1: L.ankle.x, y1: L.ankle.y, x2: L.toe.x, y2: L.toe.y });
       const a = c.arms[i], AE = armEls[i];
       set(AE.up, { x1: a.S.x, y1: a.S.y, x2: a.E.x, y2: a.E.y });
       set(AE.fo, { x1: a.E.x, y1: a.E.y, x2: a.H.x, y2: a.H.y });
       set(AE.hand, { cx: a.H.x, cy: a.H.y });
     });
-    const s = c.shX, y = c.shY;
-    const wy = y + TORSO * 0.58, wx = (s * 0.4 + CX * 0.6), sy = y + TORSO * 0.28;
+    const s = c.shX, y = c.shY, hip = p.hip;
+    const wy = y + TORSO * 0.62, wx = s * 0.4 + CX * 0.6;
     torso.setAttribute('d',
-      `M${(s - SHW).toFixed(1)} ${y.toFixed(1)} L${(s + SHW).toFixed(1)} ${y.toFixed(1)}` +
-      ` Q${(s + SHW - 5).toFixed(1)} ${sy.toFixed(1)} ${(wx + 8).toFixed(1)} ${wy.toFixed(1)}` +
-      ` Q${CX + HIPW + 3} ${(wy + (p.hip - wy) * 0.55).toFixed(1)} ${CX + HIPW} ${p.hip}` +
-      ` L${CX - HIPW} ${p.hip}` +
-      ` Q${CX - HIPW - 3} ${(wy + (p.hip - wy) * 0.55).toFixed(1)} ${(wx - 8).toFixed(1)} ${wy.toFixed(1)}` +
-      ` Q${(s - SHW + 5).toFixed(1)} ${sy.toFixed(1)} ${(s - SHW).toFixed(1)} ${y.toFixed(1)} Z`);
+      `M${(s - SHW).toFixed(1)} ${y.toFixed(1)} Q${s.toFixed(1)} ${(y - 5).toFixed(1)} ${(s + SHW).toFixed(1)} ${y.toFixed(1)}` +
+      ` Q${(s + SHW - 2).toFixed(1)} ${(y + TORSO * 0.35).toFixed(1)} ${(wx + 11).toFixed(1)} ${wy.toFixed(1)}` +
+      ` L${CX + HIPW + 4} ${hip} L${CX - HIPW - 4} ${hip}` +
+      ` L${(wx - 11).toFixed(1)} ${wy.toFixed(1)}` +
+      ` Q${(s - SHW + 2).toFixed(1)} ${(y + TORSO * 0.35).toFixed(1)} ${(s - SHW).toFixed(1)} ${y.toFixed(1)} Z`);
+    const tx = CX + p.lean * 0.4, rot = p.lean * 0.9;
+    const tt = `translate(${tx.toFixed(1)} ${(hip - 4).toFixed(1)}) rotate(${rot.toFixed(1)})`;
+    tutuBack.setAttribute('transform', tt);
+    tutuFront.setAttribute('transform', tt);
     set(neck, { x1: s, y1: y, x2: c.head.x, y2: c.head.y });
-    set(head, { cx: c.head.x, cy: c.head.y });
-    set(bun, { cx: c.head.x + Math.sin(c.tiltRad) * 13, cy: c.head.y - Math.cos(c.tiltRad) * 13 });
-    if (eyes) {
-      const ex = Math.cos(c.tiltRad) * 4.6, ey = Math.sin(c.tiltRad) * 4.6;
-      set(eyeEls[0], { cx: c.head.x - ex, cy: c.head.y - ey - 1 });
-      set(eyeEls[1], { cx: c.head.x + ex, cy: c.head.y + ey - 1 });
-    }
-    set(ground, { cx: CX + p.lean * 0.5, rx: 48 * c.shadowScale });
+    headG.setAttribute('transform', `translate(${c.head.x.toFixed(1)} ${c.head.y.toFixed(1)}) rotate(${p.tilt.toFixed(1)}) scale(1.28)`);
+    // parpadeo cada ~3,5 s
+    const ph = clock % 3500;
+    const blink = ph < 140 ? Math.abs(ph - 70) / 70 : 1;
+    eyes.forEach((e) => {
+      e.white.setAttribute('ry', (7.5 * Math.max(0.12, blink)).toFixed(2));
+      e.pupil.setAttribute('r', blink < 0.5 ? '0' : '3.8');
+      e.shine.setAttribute('r', blink < 0.5 ? '0' : '1.4');
+    });
+    mouth.setAttribute('d', smile ? 'M-7 9 Q0 20 7 9 Z' : 'M-5 11 Q0 16 5 11');
+    mouth.setAttribute('fill', smile ? '#ffd3e0' : 'none');
+    set(ground, { cx: CX + p.lean * 0.5, rx: 50 * c.shadowScale });
   }
 
   function frame(now) {
     if (!container.isConnected) return;
     const dt = last ? Math.min(64, now - last) : 0;
     last = now;
+    clock += dt;
     if (running && manual === null) t += dt;
     const beat = manual !== null ? manual : (t / (60000 / bpm)) % anim.beats;
     draw(sample(anim, beat));
@@ -280,7 +325,7 @@ export function createGuide(container, { eyes = true } = {}) {
   function start() {
     cancelAnimationFrame(raf);
     last = 0;
-    if (reduced) { draw(sample(anim, 0)); return; }
+    if (reduced) { clock = 1000; draw(sample(anim, 0)); return; }
     raf = requestAnimationFrame(frame);
   }
   start();
@@ -288,12 +333,13 @@ export function createGuide(container, { eyes = true } = {}) {
   return {
     play(name, newBpm) {
       anim = ANIMS[name] || ANIMS.coach;
+      smile = name === 'celebrate' || name === 'wave' ? 1 : 0;
       bpm = newBpm > 0 ? newBpm : 60;
       t = 0; manual = null;
       start();
     },
     setRunning(v) { running = !!v; },
-    seek(name, beat) { anim = ANIMS[name] || ANIMS.coach; manual = beat; cancelAnimationFrame(raf); draw(sample(anim, beat)); },
+    seek(name, beat) { anim = ANIMS[name] || ANIMS.coach; smile = name === 'celebrate' || name === 'wave' ? 1 : 0; manual = beat; clock = 1000; cancelAnimationFrame(raf); draw(sample(anim, beat)); },
     destroy() { cancelAnimationFrame(raf); running = false; }
   };
 }

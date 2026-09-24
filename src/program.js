@@ -1,8 +1,8 @@
 /* ------------------------------------------------------------------
    PROGRAMA POR NIVELES
-   Nivel 1 "Primeros pasos": 30 dias. Cada dia = Teoria (tarjeta + pregunta)
-   + Tecnica + Fisico. Los dias 7, 14, 21 y 28 son de descanso activo.
-   Al terminar el dia 30 se desbloquea el examen de nivel (pendiente).
+   Nivel 1 "Primeros pasos": tres modalidades (Teoria, Tecnica, Fisico), cada una
+   con su propio camino de 30 dias. Cada dia se elige una modalidad y solo avanza esa.
+   Al terminar las tres se desbloquea el examen de nivel (pendiente).
    ------------------------------------------------------------------ */
 import { CLASSES } from './data.js';
 
@@ -28,47 +28,98 @@ export const LEVELS = [
   }
 ];
 
-export const WEEKS = [
-  { from: 1, to: 7, name: { es: 'Semana 1 · Fundamentos', en: 'Week 1 · Foundations' } },
-  { from: 8, to: 14, name: { es: 'Semana 2 · La barra', en: 'Week 2 · The barre' } },
-  { from: 15, to: 21, name: { es: 'Semana 3 · Brazos y equilibrio', en: 'Week 3 · Arms and balance' } },
-  { from: 22, to: 28, name: { es: 'Semana 4 · El centro', en: 'Week 4 · The centre' } },
-  { from: 29, to: 30, name: { es: 'Final · Ensayo', en: 'Final · Rehearsal' } }
-];
-export const weekOf = (d) => WEEKS.find((w) => d >= w.from && d <= w.to);
+/* Semanas de cada modalidad */
+const W = (a, b, es, en) => ({ from: a, to: b, name: { es, en } });
+export const WEEKS = {
+  teoria: [
+    W(1, 7, 'Semana 1 · Lo básico', 'Week 1 · The basics'),
+    W(8, 14, 'Semana 2 · Primeros pasos de barra', 'Week 2 · First barre steps'),
+    W(15, 21, 'Semana 3 · Brazos y colocación', 'Week 3 · Arms and placement'),
+    W(22, 28, 'Semana 4 · La clase completa', 'Week 4 · The full class'),
+    W(29, 30, 'Final · Repaso', 'Final · Review')
+  ],
+  tecnica: [
+    W(1, 7, 'Semana 1 · Fundamentos', 'Week 1 · Foundations'),
+    W(8, 14, 'Semana 2 · La barra', 'Week 2 · The barre'),
+    W(15, 21, 'Semana 3 · Brazos y equilibrio', 'Week 3 · Arms and balance'),
+    W(22, 28, 'Semana 4 · El centro', 'Week 4 · The centre'),
+    W(29, 30, 'Final · Ensayo', 'Final · Rehearsal')
+  ],
+  fisico: [
+    W(1, 7, 'Semana 1 · Base de fuerza', 'Week 1 · Strength base'),
+    W(8, 14, 'Semana 2 · Estabilidad', 'Week 2 · Stability'),
+    W(15, 21, 'Semana 3 · Equilibrio', 'Week 3 · Balance'),
+    W(22, 28, 'Semana 4 · Resistencia', 'Week 4 · Endurance'),
+    W(29, 30, 'Final · Prueba', 'Final · Challenge')
+  ]
+};
+export const weekOf = (track, d) => WEEKS[track].find((w) => d >= w.from && d <= w.to);
 
-/* Plan: "tecnica | fisico", cada ejercicio "id:segundos". Vacio = sin bloque. */
-const PLAN = [
-  /* 1 */ 'warmup:120 posture:90 plie:120 | heel:60 butterfly:60',
-  /* 2 */ 'warmup:120 posture:60 plie:150 | feet:90 neck:60',
-  /* 3 */ 'warmup:120 posture:60 plie:150 tendu:120 | squat:60 fold:60',
-  /* 4 */ 'warmup:120 plie:150 tendu:150 | heel:90 bridge:60 butterfly:60',
-  /* 5 */ 'warmup:120 plie:150 tendu:150 port:120 | plank:45 quad:60',
-  /* 6 */ 'warmup:120 plie:150 tendu:150 releve:90 port:120 | heel:90 cobra:45 child:45',
-  /* 7 */ ' | neck:60 butterfly:90 fold:90 feet:90 child:60',
-  /* 8 */ 'warmup:120 plie:180 tendu:150 degage:90 | squat:90 fold:60',
-  /* 9 */ 'warmup:120 plie:180 tendu:150 degage:90 releve:90 | bridge:90 plank:45 butterfly:60',
-  /* 10 */ 'warmup:120 plie:180 tendu:150 degage:120 port:120 | heel:90 deadbug:60 quad:60',
-  /* 11 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:120 | squat:90 cobra:45 child:45',
-  /* 12 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:120 releve:90 | plank:60 bridge:90 fold:60',
-  /* 13 */ 'warmup:120 posture:60 plie:180 tendu:150 degage:120 rond:150 releve:120 | balance:60 butterfly:60',
-  /* 14 */ ' | neck:60 feet:90 butterfly:90 quad:60 child:60',
-  /* 15 */ 'warmup:120 plie:180 tendu:150 degage:120 port:150 c-releve:90 | balance:90 heel:90 fold:60',
-  /* 16 */ 'warmup:120 plie:180 tendu:180 rond:150 port:150 | balance:90 deadbug:60 butterfly:60',
-  /* 17 */ 'warmup:120 plie:180 tendu:180 degage:120 releve:120 c-releve:120 | squat:90 plank:60 quad:60',
-  /* 18 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:150 port:150 | bridge:90 balance:90 cobra:45',
-  /* 19 */ 'warmup:120 plie:180 tendu:180 degage:120 releve:120 port:150 c-releve:120 | heel:120 deadbug:60 fold:60',
-  /* 20 */ 'warmup:120 plie:180 tendu:180 degage:150 rond:150 releve:120 | balance:120 plank:60 butterfly:60',
-  /* 21 */ ' | neck:60 butterfly:90 fold:90 cobra:45 child:60 feet:60',
-  /* 22 */ 'warmup:120 plie:180 tendu:150 degage:120 port:150 walk:90 | heel:90 squat:90 fold:60',
-  /* 23 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:120 port:120 c-releve:120 walk:120 | balance:90 bridge:90',
-  /* 24 */ 'warmup:120 plie:180 tendu:150 degage:120 releve:120 port:120 saute:90 | plank:60 butterfly:60 quad:60',
-  /* 25 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:120 c-releve:120 walk:90 saute:90 | deadbug:60 fold:60',
-  /* 26 */ 'warmup:120 plie:180 tendu:180 degage:120 rond:150 port:120 saute:120 bow:60 | heel:90 balance:90 child:45',
-  /* 27 */ 'warmup:120 plie:180 tendu:180 degage:150 rond:150 releve:120 port:150 walk:90 saute:120 bow:60 | squat:90 plank:60 butterfly:60',
-  /* 28 */ ' | neck:60 feet:90 butterfly:90 fold:90 quad:60 child:60',
-  /* 29 */ 'warmup:120 posture:60 plie:180 tendu:180 degage:150 rond:150 releve:120 port:150 c-releve:120 walk:90 saute:120 bow:60 | fold:60 butterfly:60',
-  /* 30 */ 'warmup:120 posture:60 plie:180 tendu:180 degage:150 rond:150 releve:120 port:150 c-releve:120 walk:120 saute:120 bow:90 | balance:90 fold:60 child:60'
+/* Planes: cada ejercicio "id:segundos". Dias 7, 14, 21 y 28: repaso (tecnica) o estiramientos (fisico). */
+const TECH_PLAN = [
+  /* 1 */ 'warmup:120 posture:90 plie:120',
+  /* 2 */ 'warmup:120 posture:60 plie:150 releve:60',
+  /* 3 */ 'warmup:120 posture:60 plie:150 tendu:120',
+  /* 4 */ 'warmup:120 plie:150 tendu:150 releve:90',
+  /* 5 */ 'warmup:120 plie:150 tendu:150 port:120',
+  /* 6 */ 'warmup:120 plie:150 tendu:150 releve:90 port:120',
+  /* 7 */ 'warmup:90 posture:60 plie:120 tendu:120 port:90',
+  /* 8 */ 'warmup:120 plie:180 tendu:150 degage:90',
+  /* 9 */ 'warmup:120 plie:180 tendu:150 degage:90 releve:90',
+  /* 10 */ 'warmup:120 plie:180 tendu:150 degage:120 port:120',
+  /* 11 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:120',
+  /* 12 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:120 releve:90',
+  /* 13 */ 'warmup:120 posture:60 plie:180 tendu:150 degage:120 rond:150 releve:120',
+  /* 14 */ 'warmup:90 plie:150 tendu:120 degage:90 rond:120',
+  /* 15 */ 'warmup:120 plie:180 tendu:150 degage:120 port:150 c-releve:90',
+  /* 16 */ 'warmup:120 plie:180 tendu:180 rond:150 port:150',
+  /* 17 */ 'warmup:120 plie:180 tendu:180 degage:120 releve:120 c-releve:120',
+  /* 18 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:150 port:150',
+  /* 19 */ 'warmup:120 plie:180 tendu:180 degage:120 releve:120 port:150 c-releve:120',
+  /* 20 */ 'warmup:120 plie:180 tendu:180 degage:150 rond:150 releve:120',
+  /* 21 */ 'warmup:90 plie:150 tendu:150 port:120 c-releve:90',
+  /* 22 */ 'warmup:120 plie:180 tendu:150 degage:120 port:150 walk:90',
+  /* 23 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:120 port:120 c-releve:120 walk:120',
+  /* 24 */ 'warmup:120 plie:180 tendu:150 degage:120 releve:120 port:120 saute:90',
+  /* 25 */ 'warmup:120 plie:180 tendu:150 degage:120 rond:120 c-releve:120 walk:90 saute:90',
+  /* 26 */ 'warmup:120 plie:180 tendu:180 degage:120 rond:150 port:120 saute:120 bow:60',
+  /* 27 */ 'warmup:120 plie:180 tendu:180 degage:150 rond:150 releve:120 port:150 walk:90 saute:120 bow:60',
+  /* 28 */ 'warmup:90 plie:150 tendu:150 degage:120 port:120 walk:90 bow:60',
+  /* 29 */ 'warmup:120 posture:60 plie:180 tendu:180 degage:150 rond:150 releve:120 port:150 c-releve:120 walk:90 saute:120 bow:60',
+  /* 30 */ 'warmup:120 posture:60 plie:180 tendu:180 degage:150 rond:150 releve:120 port:150 c-releve:120 walk:120 saute:120 bow:90'
+];
+
+const PHYS_PLAN = [
+  /* 1 */ 'f-warm:90 heel:90 squat:60 butterfly:90 feet:60',
+  /* 2 */ 'f-warm:90 heel:90 bridge:60 fold:90 neck:60',
+  /* 3 */ 'f-warm:90 squat:90 plank:30 butterfly:90 feet:90',
+  /* 4 */ 'f-warm:90 heel:90 bridge:90 quad:60 child:60',
+  /* 5 */ 'f-warm:90 squat:90 plank:45 deadbug:60 fold:90',
+  /* 6 */ 'f-warm:90 heel:120 bridge:90 balance:60 butterfly:90',
+  /* 7 */ 'neck:60 butterfly:90 fold:90 quad:60 cobra:45 child:60 feet:90',
+  /* 8 */ 'f-warm:90 heel:120 squat:90 plank:45 fold:90 butterfly:60',
+  /* 9 */ 'f-warm:90 bridge:90 deadbug:60 balance:60 quad:60 child:60',
+  /* 10 */ 'f-warm:90 heel:120 squat:120 plank:60 butterfly:90',
+  /* 11 */ 'f-warm:90 bridge:120 balance:90 deadbug:60 fold:90',
+  /* 12 */ 'f-warm:90 heel:120 squat:120 plank:60 cobra:45 child:60',
+  /* 13 */ 'f-warm:90 bridge:120 balance:90 deadbug:90 butterfly:90 feet:60',
+  /* 14 */ 'neck:60 feet:90 butterfly:90 fold:90 quad:60 child:60',
+  /* 15 */ 'f-warm:90 heel:120 squat:120 balance:90 plank:60 fold:90',
+  /* 16 */ 'f-warm:90 bridge:120 deadbug:90 balance:90 butterfly:90 quad:60',
+  /* 17 */ 'f-warm:90 heel:150 squat:120 plank:75 cobra:45 child:60',
+  /* 18 */ 'f-warm:90 bridge:120 balance:120 deadbug:90 fold:90',
+  /* 19 */ 'f-warm:90 heel:150 squat:120 plank:75 balance:90 butterfly:90',
+  /* 20 */ 'f-warm:90 bridge:150 deadbug:90 balance:120 quad:60 child:60',
+  /* 21 */ 'neck:60 butterfly:90 fold:90 cobra:45 quad:60 child:60 feet:60',
+  /* 22 */ 'f-warm:90 heel:150 squat:150 plank:90 fold:90 butterfly:60',
+  /* 23 */ 'f-warm:90 bridge:150 balance:120 deadbug:90 quad:60 child:60',
+  /* 24 */ 'f-warm:90 heel:150 squat:150 plank:90 balance:120 fold:90',
+  /* 25 */ 'f-warm:90 bridge:150 deadbug:120 balance:120 butterfly:90 feet:60',
+  /* 26 */ 'f-warm:90 heel:180 squat:150 plank:90 cobra:45 child:60',
+  /* 27 */ 'f-warm:90 bridge:150 balance:150 deadbug:120 fold:90 quad:60',
+  /* 28 */ 'neck:60 feet:90 butterfly:90 fold:90 quad:60 cobra:45 child:60',
+  /* 29 */ 'f-warm:90 heel:180 squat:150 bridge:150 plank:90 balance:120 fold:90',
+  /* 30 */ 'f-warm:90 heel:180 squat:150 bridge:150 plank:90 deadbug:120 balance:150 butterfly:90 child:60'
 ];
 
 const parse = (part) => part.trim().split(/\s+/).filter(Boolean).map((tok) => {
@@ -107,8 +158,8 @@ const THEORY30 = [
     ['Second position', 'Like first, but with your feet a little wider than your shoulders. Your weight is shared equally between both feet.'],
     Q(['En segunda posición, los pies están...', 'Pegados', 'Separados un poco más que los hombros', 'Uno delante del otro'], ['In second position, your feet are...', 'Touching', 'A little wider than your shoulders', 'One in front of the other'], 1)),
   /* 7 */ T('coach',
-    ['Descansar también es entrenar', 'Hoy toca descanso activo: estiramientos suaves. Los músculos se hacen más fuertes mientras descansan, así que este día es tan importante como los demás.'],
-    ['Resting is training too', 'Today is an active rest day: gentle stretching. Muscles get stronger while they rest, so this day is as important as the others.'],
+    ['Descansar también es entrenar', 'Los músculos se hacen más fuertes mientras descansan. Por eso en Físico hay días solo de estiramientos, y en Técnica días de repaso más suaves. Descansar es tan importante como entrenar.'],
+    ['Resting is training too', 'Muscles get stronger while they rest. That is why Fitness has stretching-only days and Technique has gentler review days. Resting matters as much as training.'],
     Q(['¿Para qué sirve el día de descanso?', 'Para que el cuerpo se recupere', 'No sirve para nada', 'Para saltar más'], ['What is the rest day for?', 'To let the body recover', 'Nothing at all', 'To jump more'], 0)),
   /* 8 */ T('tendu',
     ['Tendu significa "estirado"', 'En el tendu, el pie se desliza por el suelo hasta que la rodilla y el empeine quedan estirados. La punta no se despega nunca del suelo.'],
@@ -195,27 +246,69 @@ const THEORY30 = [
     ['The révérence', 'Class ends with a bow to thank the teacher and the pianist. It is a sign of respect in every ballet school.'],
     Q(['¿Para qué sirve la reverencia?', 'Para dar las gracias', 'Para calentar', 'Para saltar'], ['What is the révérence for?', 'To say thank you', 'To warm up', 'To jump'], 0)),
   /* 29 */ T('coach',
-    ['Ensayo general', 'Hoy repasas todo lo aprendido en una clase casi completa. No hace falta que salga perfecto: fíjate en la postura, en las rodillas y en respirar con calma.'],
-    ['Dress rehearsal', 'Today you go over everything in an almost complete class. It does not need to be perfect: focus on posture, your knees and calm breathing.'],
-    Q(['En el ensayo, ¿en qué te fijas?', 'En hacerlo muy rápido', 'En la postura y las rodillas', 'En saltar muy alto'], ['In the rehearsal, what do you focus on?', 'Doing it very fast', 'Posture and knees', 'Jumping very high'], 1)),
+    ['Repaso general', 'Ya conoces las posiciones, los pasos de la barra, el centro y cómo cuidar tu cuerpo. Cuando bailes, fíjate sobre todo en la postura, en las rodillas y en respirar con calma.'],
+    ['General review', 'You now know the positions, the barre steps, the centre and how to look after your body. When you dance, focus above all on posture, your knees and calm breathing.'],
+    Q(['Al bailar, ¿en qué te fijas sobre todo?', 'En hacerlo muy rápido', 'En la postura y las rodillas', 'En saltar muy alto'], ['When dancing, what do you focus on most?', 'Doing it very fast', 'Posture and knees', 'Jumping very high'], 1)),
   /* 30 */ T('celebrate',
-    ['¡Lo has conseguido!', 'Treinta días de ballet. Hoy haces la clase completa, de la barra a la reverencia. Después te espera el examen del Nivel 1 para pasar al Nivel 2.'],
-    ['You made it!', 'Thirty days of ballet. Today you do the full class, from barre to révérence. Then the Level 1 exam awaits, to move up to Level 2.'],
+    ['¡Lo has conseguido!', 'Treinta días de teoría. Cuando termines también los 30 días de Técnica y de Físico, te espera el examen del Nivel 1 para pasar al Nivel 2.'],
+    ['You made it!', 'Thirty days of theory. Once you also finish the 30 days of Technique and Fitness, the Level 1 exam awaits, to move up to Level 2.'],
     Q(['¿Cuántos días dura el Nivel 1?', '7 días', '30 días', '100 días'], ['How many days does Level 1 last?', '7 days', '30 days', '100 days'], 1))
 ];
 
 export const REST_DAYS = [7, 14, 21, 28];
+export const TRACK_IDS = ['teoria', 'tecnica', 'fisico'];
 
-export const PROGRAM = PLAN.map((line, i) => {
-  const [tech, phys] = line.split('|');
-  const day = i + 1;
-  return {
-    day,
-    rest: REST_DAYS.includes(day),
-    theory: THEORY30[i],
-    tecnica: parse(tech),
-    fisico: parse(phys)
-  };
-});
+/* Titulo de cada dia de tecnica/fisico: los ejercicios nuevos de ese dia. */
+const FOCUS = {
+  tecnica: [
+    ['Enfoque: rodillas sobre los pies', 'Focus: knees over your feet'],
+    ['Enfoque: crecer hacia arriba', 'Focus: growing tall'],
+    ['Enfoque: pies bien estirados', 'Focus: well-pointed feet'],
+    ['Enfoque: hombros bajos', 'Focus: shoulders down'],
+    ['Enfoque: control al bajar', 'Focus: control on the way down'],
+    ['Enfoque: brazos redondeados', 'Focus: rounded arms'],
+    ['Enfoque: mirada al frente', 'Focus: eyes forward']
+  ],
+  fisico: [
+    ['Enfoque: movimientos lentos', 'Focus: slow movements'],
+    ['Enfoque: respira con calma', 'Focus: breathe calmly'],
+    ['Enfoque: abdomen activo', 'Focus: active core'],
+    ['Enfoque: aguanta un poco más', 'Focus: hold a little longer'],
+    ['Enfoque: espalda larga', 'Focus: long back']
+  ]
+};
+function withTitles(days, restTitle, focus, firstTitle) {
+  const seen = new Set();
+  return days.map((d) => {
+    const fresh = d.exercises.filter((e) => !seen.has(e.id));
+    d.exercises.forEach((e) => seen.add(e.id));
+    let title;
+    if (d.rest) title = restTitle;
+    else if (d.day === 1) title = firstTitle;
+    else if (fresh.length) title = {
+      es: 'Nuevo: ' + fresh.map((e) => e.name.es).join(', '),
+      en: 'New: ' + fresh.map((e) => e.name.en).join(', ')
+    };
+    else { const f = focus[d.day % focus.length]; title = { es: f[0], en: f[1] }; }
+    return { ...d, title };
+  });
+}
 
-export const dayMinutes = (d) => Math.max(1, Math.round((d.tecnica.concat(d.fisico).reduce((a, e) => a + e.dur, 0) + 60) / 60));
+export const TRACKS = {
+  teoria: THEORY30.map((card, i) => {
+    const day = i + 1;
+    const r = day >= 4 ? day - 3 : day >= 2 ? day - 1 : 0;   // pregunta de repaso de un dia anterior
+    return { day, rest: false, title: card.title, card, review: r ? THEORY30[r - 1].q : null, reviewDay: r };
+  }),
+  tecnica: withTitles(TECH_PLAN.map((line, i) => ({ day: i + 1, rest: REST_DAYS.includes(i + 1), exercises: parse(line) })),
+    { es: 'Repaso de la semana', en: 'Weekly review' }, FOCUS.tecnica,
+    { es: 'Tu primera clase', en: 'Your first class' }),
+  fisico: withTitles(PHYS_PLAN.map((line, i) => ({ day: i + 1, rest: REST_DAYS.includes(i + 1), exercises: parse(line) })),
+    { es: 'Estiramientos', en: 'Stretching' }, FOCUS.fisico,
+    { es: 'Tu primer entrenamiento', en: 'Your first workout' })
+};
+
+export function trackMinutes(track, d) {
+  if (track === 'teoria') return d.review ? 3 : 2;
+  return Math.max(1, Math.round(d.exercises.reduce((a, e) => a + e.dur, 0) / 60));
+}

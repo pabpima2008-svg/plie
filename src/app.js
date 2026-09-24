@@ -1,5 +1,5 @@
 import { CLASSES, THEORY, classesOf } from './data.js';
-import { PROGRAM, LEVELS, weekOf, dayMinutes } from './program.js';
+import { TRACKS, TRACK_IDS, LEVELS, weekOf, trackMinutes } from './program.js';
 import { createGuide } from './guide.js';
 import { STR } from './i18n.js';
 import { Ads, Billing, CONFIG, adProfile, isNative } from './ads.js';
@@ -11,25 +11,27 @@ const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } }
 };
-const emptyProg = () => ({ level: 1, doneDates: {}, minutes: 0, quizRight: 0 });
+const emptyProg = () => ({ level: 1, tracks: { teoria: {}, tecnica: {}, fisico: {} }, minutes: 0, quizRight: 0 });
 
 const state = {
   lang: LS.get('lang', (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en'),
   birth: LS.get('birth', null),
   premium: LS.get('premium', false),
   done: LS.get('done', {}),
-  prog: LS.get('prog', null) || emptyProg(),
+  prog: LS.get('prog3', null) || emptyProg(),
   testMode: CONFIG.TEST_TOOLS ? LS.get('testMode', false) : false,
   screen: 'home',
   section: 'tecnica',
   lessonId: null,
   classId: null,
   dayN: 1,
+  track: 'tecnica',
+  mapTrack: 'tecnica',
   back: 'home',
   changingAge: false,
   lastResult: null
 };
-const saveProg = () => LS.set('prog', state.prog);
+const saveProg = () => LS.set('prog3', state.prog);
 
 const t = (k, vars) => {
   let s = (STR[state.lang] && STR[state.lang][k]) ?? STR.es[k] ?? k;
@@ -65,29 +67,35 @@ const COLORS = {
 };
 const BLOCK_COLOR = { teoria: 'dusty', tecnica: 'rose', fisico: 'peach' };
 
-/* ================= progreso del programa ================= */
-const isDone = (n) => !!state.prog.doneDates[n];
-const doneCount = () => Object.keys(state.prog.doneDates).length;
-function nextDay() {
-  for (let n = 1; n <= 30; n++) if (!isDone(n)) return n;
+/* ================= progreso: una modalidad = un camino de 30 dias ================= */
+const trackDates = (tr) => state.prog.tracks[tr];
+const isDone = (tr, n) => !!trackDates(tr)[n];
+const doneCount = (tr) => Object.keys(trackDates(tr)).length;
+function nextDay(tr) {
+  for (let n = 1; n <= 30; n++) if (!isDone(tr, n)) return n;
   return 31;
 }
 // 'done' | 'open' | 'tomorrow' | 'locked'
-function dayStatus(n) {
-  if (isDone(n)) return 'done';
+function dayStatus(tr, n) {
+  if (isDone(tr, n)) return 'done';
   if (n === 1) return 'open';
-  if (!isDone(n - 1)) return state.testMode ? 'open' : 'locked';
+  if (!isDone(tr, n - 1)) return state.testMode ? 'open' : 'locked';
   if (state.testMode) return 'open';
-  return state.prog.doneDates[n - 1] < todayStr() ? 'open' : 'tomorrow';
+  return trackDates(tr)[n - 1] < todayStr() ? 'open' : 'tomorrow';
 }
+const doneToday = (tr) => Object.values(trackDates(tr)).includes(todayStr());
+const levelComplete = () => TRACK_IDS.every(tr => nextDay(tr) > 30);
 function streak() {
-  const dates = new Set(Object.values(state.prog.doneDates));
+  const dates = new Set(TRACK_IDS.flatMap(tr => Object.values(trackDates(tr))));
   const d = new Date();
   if (!dates.has(todayStr(d))) d.setDate(d.getDate() - 1);
   let n = 0;
   while (dates.has(todayStr(d))) { n++; d.setDate(d.getDate() - 1); }
   return n;
 }
+const joinList = (arr) => arr.length < 2 ? arr.join('') : arr.slice(0, -1).join(', ') + t('andWord') + arr[arr.length - 1];
+const trackName = (tr) => t('block' + tr[0].toUpperCase() + tr.slice(1));
+const TRACK_ANIM = { teoria: 'portdebras', tecnica: 'plie', fisico: 'heelraise' };
 
 /* ================= audio ================= */
 const audio = { ctx: null, metro: null };
@@ -169,33 +177,35 @@ function go(screen, extra = {}) {
   window.scrollTo(0, 0);
 }
 
-/* ================= sesion (dia del programa o clase libre) ================= */
+/* ================= sesion (dia de una modalidad o clase libre) ================= */
 const S = {
-  kind: 'day', ref: null, steps: [], i: 0,
+  kind: 'day', track: 'tecnica', ref: null, steps: [], i: 0,
   running: false, endAt: 0, remainingMs: 0, timer: null,
-  picked: null, quizOk: null, metro: LS.get('metro', true)
+  answers: {}, metro: LS.get('metro', true)
 };
 
-function buildDaySteps(d) {
-  const steps = [
-    { type: 'card', block: 'teoria', card: d.theory },
-    { type: 'quiz', block: 'teoria', q: d.theory.q }
-  ];
-  d.tecnica.forEach(ex => steps.push({ type: 'ex', block: 'tecnica', ex }));
-  d.fisico.forEach(ex => steps.push({ type: 'ex', block: 'fisico', ex }));
-  return steps;
+function buildTrackSteps(tr, d) {
+  if (tr === 'teoria') {
+    const steps = [
+      { type: 'card', block: 'teoria', card: d.card },
+      { type: 'quiz', block: 'teoria', q: d.card.q }
+    ];
+    if (d.review) steps.push({ type: 'quiz', block: 'teoria', q: d.review, review: d.reviewDay });
+    return steps;
+  }
+  return d.exercises.map(ex => ({ type: 'ex', block: tr, ex }));
 }
 
-function startDay(n) {
-  const d = PROGRAM[n - 1];
-  Object.assign(S, { kind: 'day', ref: n, steps: buildDaySteps(d), i: 0, picked: null, quizOk: null });
+function startTrackDay(tr, n) {
+  const d = TRACKS[tr][n - 1];
+  Object.assign(S, { kind: 'day', track: tr, ref: n, steps: buildTrackSteps(tr, d), i: 0, answers: {} });
   ensureAudio(); keepAwake(true);
   go('session');
   enterStep(0);
 }
 function startClass(id) {
   const c = getClass(id);
-  Object.assign(S, { kind: 'class', ref: id, steps: c.exercises.map(ex => ({ type: 'ex', block: c.section, ex })), i: 0 });
+  Object.assign(S, { kind: 'class', ref: id, steps: c.exercises.map(ex => ({ type: 'ex', block: c.section, ex })), i: 0, answers: {} });
   ensureAudio(); keepAwake(true);
   go('session');
   enterStep(0);
@@ -259,14 +269,16 @@ function togglePause() {
 function finishSession() {
   stopSession();
   if (S.kind === 'day') {
-    const n = S.ref;
-    const d = PROGRAM[n - 1];
-    const first = !isDone(n);
-    if (first) state.prog.doneDates[n] = todayStr();
-    state.prog.minutes += dayMinutes(d);
-    if (S.quizOk) state.prog.quizRight += 1;
+    const tr = S.track, n = S.ref;
+    const d = TRACKS[tr][n - 1];
+    const first = !isDone(tr, n);
+    if (first) trackDates(tr)[n] = todayStr();
+    state.prog.minutes += trackMinutes(tr, d);
+    const qs = S.steps.map((st, i) => st.type === 'quiz' ? (S.answers[i] === st.q.answer) : null).filter(v => v !== null);
+    const right = qs.filter(Boolean).length;
+    state.prog.quizRight += right;
     saveProg();
-    state.lastResult = { n, first, quizOk: S.quizOk };
+    state.lastResult = { tr, n, first, right, total: qs.length };
     go('dayDone');
   } else {
     state.done[S.ref] = (state.done[S.ref] || 0) + 1;
@@ -277,7 +289,7 @@ function finishSession() {
 }
 
 function leaveSession() {
-  if (S.kind === 'day') go('day', { dayN: S.ref });
+  if (S.kind === 'day') go('day', { track: S.track, dayN: S.ref });
   else go('detail', { classId: S.ref });
 }
 
@@ -406,43 +418,53 @@ function bindLang() {
 }
 
 /* ================= pantalla: inicio ================= */
-function dayDot(n) {
-  const st = dayStatus(n);
-  const d = PROGRAM[n - 1];
-  const isNext = n === nextDay();
+function dayDot(tr, n) {
+  const st = dayStatus(tr, n);
+  const d = TRACKS[tr][n - 1];
+  const isNext = n === nextDay(tr);
   const cls = ['dot', st, isNext ? 'next' : '', d.rest ? 'rest' : ''].join(' ');
-  const inner = st === 'done' ? checkSvg(15) : (st === 'locked' || st === 'tomorrow') ? (d.rest ? moonSvg(12) : `<span>${n}</span>`) : `<span>${n}</span>`;
-  const label = `${t('dayWord')} ${n}${d.rest ? ' · ' + t('restDay') : ''}`;
-  return `<button class="${cls}" data-day="${n}" aria-label="${label}">${inner}${d.rest && st !== 'done' && st !== 'locked' && st !== 'tomorrow' ? `<i class="moon">${moonSvg(10)}</i>` : ''}</button>`;
+  const inner = st === 'done' ? checkSvg(15) : `<span>${n}</span>`;
+  const label = `${trackName(tr)} · ${t('dayWord')} ${n}${d.rest ? ' · ' + L(d.title) : ''}`;
+  return `<button class="${cls}" data-day="${n}" aria-label="${label}">${inner}${d.rest && st !== 'done' ? `<i class="moon">${moonSvg(10)}</i>` : ''}</button>`;
+}
+
+function modeCard(tr) {
+  const [c1, c2] = COLORS[BLOCK_COLOR[tr]];
+  const nd = nextDay(tr);
+  let status, meta;
+  if (nd > 30) { status = `<em class="mstate done">${checkSvg(13)} ${t('trackDone')}</em>`; meta = t('trackDoneText'); }
+  else {
+    const d = TRACKS[tr][nd - 1];
+    const st = dayStatus(tr, nd);
+    meta = `${t('dayWord')} ${nd} · ${trackMinutes(tr, d)} ${t('minutes')} · ${L(d.title)}`;
+    status = st === 'tomorrow'
+      ? `<em class="mstate wait">${checkSvg(13)} ${t('doneTodayShort')}</em>`
+      : `<em class="mstate go">${t('startShort')}</em>`;
+  }
+  return `
+    <button class="mode" data-track="${tr}" style="--c1:${c1};--c2:${c2}">
+      <span class="mtop"><span class="mname">${trackName(tr)}</span>${status}</span>
+      <span class="mmeta">${meta}</span>
+      <span class="mbar"><i style="width:${Math.round(doneCount(tr) / 30 * 100)}%"></i></span>
+      <span class="mcount">${doneCount(tr)}/30 ${t('daysWord')}</span>
+    </button>`;
 }
 
 function renderHome() {
   const lv = LEVELS[0];
-  const done = doneCount();
-  const nd = nextDay();
-  const all = nd > 30;
-  const ndStatus = all ? 'done' : dayStatus(nd);
-  let bubble, anim, cta;
-  if (all) {
-    bubble = t('hiExam'); anim = 'celebrate';
-    cta = `<button class="btn big" id="ctaBtn">${t('toExam')}</button>`;
-  } else if (ndStatus === 'tomorrow') {
-    bubble = t('hiWait'); anim = 'coach';
-    cta = `<div class="wait"><strong>${t('comeBack', { n: nd })}</strong><span>${t('comeBackText')}</span></div>`;
-  } else {
-    bubble = nd === 1 ? t('hiDay1') : PROGRAM[nd - 1].rest ? t('hiRest') : t('hiDayN', { n: nd });
-    anim = 'wave';
-    const d = PROGRAM[nd - 1];
-    cta = `<button class="btn big" id="ctaBtn">${t('startDay', { n: nd })} · ${dayMinutes(d)} ${t('minutes')}</button>`;
-  }
-  const pct = Math.round(done / lv.days * 100);
-  const weeks = [[1, 7], [8, 14], [15, 21], [22, 28], [29, 30]];
-  const map = weeks.map(([a, b]) => {
-    const w = weekOf(a);
-    let dots = '';
-    for (let n = a; n <= b; n++) dots += dayDot(n);
-    return `<div class="week"><span class="wname">${L(w.name)}</span><div class="dots-row">${dots}</div></div>`;
-  }).join('');
+  const all = levelComplete();
+  const today = TRACK_IDS.filter(doneToday);
+  let bubble, anim;
+  if (all) { bubble = t('hiExam'); anim = 'celebrate'; }
+  else if (today.length === 3) { bubble = t('hiAllToday'); anim = 'celebrate'; }
+  else if (today.length) { bubble = t('hiMore', { m: joinList(today.map(trackName)) }); anim = 'coach'; }
+  else if (TRACK_IDS.every(tr => doneCount(tr) === 0)) { bubble = t('hiDay1'); anim = 'wave'; }
+  else { bubble = t('hiPick'); anim = 'wave'; }
+
+  const mt = state.mapTrack;
+  let dots = '';
+  for (let n = 1; n <= 30; n++) dots += dayDot(mt, n);
+  const weeks = WEEKS_OF(mt);
   const levelsHtml = LEVELS.map(l => {
     const cur = l.n === state.prog.level;
     return `<div class="lvl ${cur ? 'cur' : 'lockd'}">
@@ -468,21 +490,27 @@ function renderHome() {
         <div class="lc-top">
           <span class="eyebrow">${t('levelWord')} ${lv.n}</span>
           <h1>${L(lv.name)}</h1>
-          <p>${L(lv.desc)}</p>
+          <p>${t('levelRule')}</p>
         </div>
-        <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="30" aria-valuenow="${done}"><i style="width:${pct}%"></i></div>
         <div class="stats">
-          <div><b>${done}<small>/30</small></b><span>${t('daysDone')}</span></div>
+          <div><b>${TRACK_IDS.reduce((a, tr) => a + doneCount(tr), 0)}<small>/90</small></b><span>${t('daysDone')}</span></div>
           <div><b>${flameSvg()} ${streak()}</b><span>${t('streak')}</span></div>
           <div><b>${state.prog.minutes}</b><span>${t('minutesDone')}</span></div>
         </div>
       </section>
 
-      ${cta}
+      <section class="block">
+        <h2>${t('whatToday')}</h2>
+        <p class="muted small">${t('whatTodaySub')}</p>
+        <div class="modes">${TRACK_IDS.map(modeCard).join('')}</div>
+      </section>
 
       <section class="block">
         <h2>${t('yourPath')}</h2>
-        <div class="map">${map}</div>
+        <div class="seg" role="tablist">
+          ${TRACK_IDS.map(tr => `<button role="tab" aria-selected="${tr === mt}" class="${tr === mt ? 'on' : ''}" data-map="${tr}">${trackName(tr)}</button>`).join('')}
+        </div>
+        <div class="map">${weeks}<div class="dots-grid">${dots}</div></div>
         <button class="exam-row ${all ? 'open' : ''}" id="examRow">
           <span class="exam-ic">${all ? starSvg(22) : lockSvg(16)}</span>
           <span><strong>${t('exam')}</strong><small>${all ? t('examReady') : t('examLocked')}</small></span>
@@ -503,62 +531,77 @@ function renderHome() {
     </main>`;
 
   document.getElementById('setBtn').onclick = () => go('settings');
-  const cb = document.getElementById('ctaBtn');
-  if (cb) cb.onclick = () => all ? go('exam') : go('day', { dayN: nd });
   document.getElementById('examRow').onclick = () => go('exam');
+  document.querySelectorAll('[data-track]').forEach(b => b.onclick = () => {
+    const tr = b.dataset.track;
+    const nd = nextDay(tr);
+    if (nd > 30) { state.mapTrack = tr; toast(t('trackDoneText')); render(); return; }
+    go('day', { track: tr, dayN: nd });
+  });
+  document.querySelectorAll('[data-map]').forEach(b => b.onclick = () => { state.mapTrack = b.dataset.map; render(); });
   document.querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
     const n = parseInt(b.dataset.day, 10);
-    const st = dayStatus(n);
+    const st = dayStatus(mt, n);
     if (st === 'locked') toast(t('lockedDay'));
     else if (st === 'tomorrow') toast(t('lockedTomorrow'));
-    else go('day', { dayN: n });
+    else go('day', { track: mt, dayN: n });
   });
   document.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => go('section', { section: b.dataset.sec }));
   mountGuide('#guide', anim, 90);
 }
 
-/* ================= pantalla: dia ================= */
+function WEEKS_OF(tr) {
+  const n = nextDay(tr);
+  const w = weekOf(tr, Math.min(30, n));
+  return `<p class="wnow"><span class="eyebrow">${t('nowIn')}</span>${L(w.name)}</p>`;
+}
+
+/* ================= pantalla: dia de una modalidad ================= */
 function exList(list) {
   return `<ol class="ex-list">${list.map(e => `<li><span class="ex-name">${L(e.name)}</span><span class="ex-dur">${fmt(e.dur)}</span></li>`).join('')}</ol>`;
 }
 function renderDay() {
-  const n = state.dayN;
-  const d = PROGRAM[n - 1];
-  const w = weekOf(n);
-  const st = dayStatus(n);
-  const mins = (arr) => Math.max(1, Math.round(arr.reduce((a, e) => a + e.dur, 0) / 60));
-  const blk = (key, body, extra = '') => {
-    const [c1, c2] = COLORS[BLOCK_COLOR[key]];
-    return `<section class="dblock" style="--c1:${c1};--c2:${c2}">
-      <header><span class="bchip">${t('block' + key[0].toUpperCase() + key.slice(1))}</span>${extra}</header>
-      ${body}
-    </section>`;
-  };
+  const tr = state.track, n = state.dayN;
+  const d = TRACKS[tr][n - 1];
+  const w = weekOf(tr, n);
+  const st = dayStatus(tr, n);
+  const [c1, c2] = COLORS[BLOCK_COLOR[tr]];
+  let body;
+  if (tr === 'teoria') {
+    body = `<section class="dblock" style="--c1:${c1};--c2:${c2}">
+      <ul class="plain tl">
+        <li>${t('tlCard')}: <strong>${L(d.card.title)}</strong></li>
+        <li>${t('tlQuiz')}</li>
+        ${d.review ? `<li>${t('tlReview', { n: d.reviewDay })}</li>` : ''}
+      </ul></section>`;
+  } else {
+    body = `<section class="dblock" style="--c1:${c1};--c2:${c2}">${exList(d.exercises)}</section>`;
+  }
   $app.innerHTML = `
     <main class="screen">
-      <header class="topbar"><button class="icon-btn" id="backBtn" aria-label="${t('back')}">${backSvg()}</button><strong>${t('dayOf', { n, m: 30 })}</strong><span class="spacer"></span></header>
-      <div class="day-hero">
+      <header class="topbar"><button class="icon-btn" id="backBtn" aria-label="${t('back')}">${backSvg()}</button><strong>${trackName(tr)} · ${t('dayOf', { n, m: 30 })}</strong><span class="spacer"></span></header>
+      <div class="day-hero" style="--c1:${c1};--c2:${c2}">
         <div id="guide" class="guide small"></div>
         <div>
-          <span class="eyebrow">${L(w.name)}</span>
-          <h1>${d.rest ? t('restDay') : L(d.theory.title)}</h1>
-          <p class="muted">${dayMinutes(d)} ${t('minutes')}${isDone(n) ? ' · ' + t('doneOnce') : ''}</p>
+          <span class="bchip">${trackName(tr)}</span>
+          <span class="eyebrow wk">${L(w.name)}</span>
+          <h1>${L(d.title)}</h1>
+          <p class="muted">${trackMinutes(tr, d)} ${t('minutes')}${isDone(tr, n) ? ' · ' + t('doneOnce') : ''}</p>
         </div>
       </div>
-      ${st === 'done' || st === 'open' ? `<button class="btn big" id="startBtn">${isDone(n) ? t('repeatDay', { n }) : t('startDay', { n })}</button>` : ''}
-      ${blk('teoria', `<p class="bline"><strong>${t('theoryOfDay')}:</strong> ${L(d.theory.title)}</p>`, `<small>~1 ${t('minutes')}</small>`)}
-      ${d.tecnica.length ? blk('tecnica', exList(d.tecnica), `<small>${mins(d.tecnica)} ${t('minutes')}</small>`) : blk('tecnica', `<p class="bline muted">${t('noBlock')}</p>`)}
-      ${d.fisico.length ? blk('fisico', exList(d.fisico), `<small>${mins(d.fisico)} ${t('minutes')}</small>`) : ''}
-      <section class="note">
+      ${st === 'done' || st === 'open' ? `<button class="btn big" id="startBtn">${isDone(tr, n) ? t('repeatDay', { n }) : t('startDay', { n })}</button>` : `<div class="wait"><strong>${t('comeBack', { n })}</strong><span>${t('comeBackText')}</span></div>`}
+      ${body}
+      <p class="muted small rule">${t('onlyThisTrack', { m: trackName(tr) })}</p>
+      ${tr === 'teoria' ? '' : `<section class="note">
         <h2>${t('before')}</h2>
         <ul>${t('beforeList').map(x => `<li>${x}</li>`).join('')}</ul>
-      </section>
+      </section>`}
       ${adSlotHtml()}
     </main>`;
-  document.getElementById('backBtn').onclick = () => go('home');
+  document.getElementById('backBtn').onclick = () => go('home', { mapTrack: tr });
   const sb = document.getElementById('startBtn');
-  if (sb) sb.onclick = () => startDay(n);
-  mountGuide('#guide', d.rest ? 'neck' : (d.tecnica[0] ? 'coach' : 'coach'), 70);
+  if (sb) sb.onclick = () => startTrackDay(tr, n);
+  mountGuide('#guide', d.rest ? (tr === 'fisico' ? 'neck' : 'posture') : TRACK_ANIM[tr], 70);
 }
 
 /* ================= pantalla: sesion ================= */
@@ -567,11 +610,10 @@ function renderSession() {
   const total = S.steps.length;
   const [c1, c2] = COLORS[BLOCK_COLOR[st.block]] || COLORS.rose;
   const pct = Math.round((S.i / total) * 100);
-  const blockName = t('block' + st.block[0].toUpperCase() + st.block.slice(1));
   const head = `
     <header class="topbar">
       <button class="icon-btn" id="quitBtn" aria-label="${t('quit')}">${closeSvg()}</button>
-      <span class="progress-text"><span class="bchip">${blockName}</span> ${t('step', { n: S.i + 1, m: total })}</span>
+      <span class="progress-text"><span class="bchip">${trackName(st.block)}${S.kind === 'day' ? ' · ' + t('dayWord') + ' ' + S.ref : ''}</span> ${t('step', { n: S.i + 1, m: total })}</span>
       <span class="spacer"></span>
     </header>
     <div class="sbar"><i style="width:${pct}%"></i></div>`;
@@ -587,18 +629,19 @@ function renderSession() {
       </div>`;
   } else if (st.type === 'quiz') {
     const opts = st.q.options[state.lang] || st.q.options.es;
-    const answered = S.picked !== null;
-    const ok = answered && S.picked === st.q.answer;
+    const picked = S.answers[S.i] ?? null;
+    const answered = picked !== null;
+    const ok = answered && picked === st.q.answer;
     body = `
       <div class="stage short"><div id="guide" class="guide"></div></div>
-      <article class="lesson-card"><h1>${L(st.q.q)}</h1></article>
+      <article class="lesson-card">${st.review ? `<span class="eyebrow">${t('reviewOf', { n: st.review })}</span>` : `<span class="eyebrow">${t('question')}</span>`}<h1>${L(st.q.q)}</h1></article>
       <div class="opts">
-        ${opts.map((o, i) => `<button class="opt ${answered ? (i === st.q.answer ? 'right' : i === S.picked ? 'wrong' : '') : ''}" data-o="${i}" ${answered ? 'disabled' : ''}>${o}</button>`).join('')}
+        ${opts.map((o, i) => `<button class="opt ${answered ? (i === st.q.answer ? 'right' : i === picked ? 'wrong' : '') : ''}" data-o="${i}" ${answered ? 'disabled' : ''}>${o}</button>`).join('')}
       </div>
       ${answered ? `<p class="feedback ${ok ? 'ok' : 'no'}">${ok ? t('correct') : t('wrongIs')}</p>` : ''}
       <div class="controls two">
         <button class="btn secondary" id="prevBtn">${t('prev')}</button>
-        <button class="btn" id="nextBtn" ${answered ? '' : 'aria-disabled="true"'}>${t('next')}</button>
+        <button class="btn" id="nextBtn" ${answered ? '' : 'aria-disabled="true"'}>${S.i + 1 === total ? t('finishDay') : t('next')}</button>
       </div>`;
   } else {
     const ex = st.ex;
@@ -630,17 +673,16 @@ function renderSession() {
 
   document.getElementById('quitBtn').onclick = askQuit;
   const prev = document.getElementById('prevBtn');
-  if (prev) prev.onclick = () => { if (S.i > 0) { if (S.steps[S.i - 1].type === 'quiz') S.picked = S.picked; enterStep(S.i - 1); } };
+  if (prev) prev.onclick = () => { if (S.i > 0) enterStep(S.i - 1); };
   const nx = document.getElementById('nextBtn');
   if (st.type === 'quiz') {
+    const picked = S.answers[S.i] ?? null;
     document.querySelectorAll('[data-o]').forEach(b => b.onclick = () => {
-      S.picked = parseInt(b.dataset.o, 10);
-      if (S.quizOk === null) S.quizOk = S.picked === st.q.answer;
+      S.answers[S.i] = parseInt(b.dataset.o, 10);
       renderSession();
     });
-    nx.onclick = () => { if (S.picked === null) { toast(t('answerFirst')); return; } nextStep(); };
-    const ok = S.picked !== null && S.picked === st.q.answer;
-    mountGuide('#guide', S.picked === null ? 'coach' : ok ? 'celebrate' : 'coach', 90);
+    nx.onclick = () => { if (picked === null) { toast(t('answerFirst')); return; } nextStep(); };
+    mountGuide('#guide', picked === null ? 'coach' : picked === st.q.answer ? 'celebrate' : 'coach', 90);
   } else if (st.type === 'card') {
     nx.onclick = nextStep;
     mountGuide('#guide', st.card.anim, 60);
@@ -662,22 +704,23 @@ function renderSession() {
 
 /* ================= pantalla: dia completado ================= */
 function renderDayDone() {
-  const r = state.lastResult || { n: state.dayN, quizOk: null };
-  const last = r.n >= 30;
-  const nd = nextDay();
+  const r = state.lastResult || { tr: state.track, n: state.dayN, right: 0, total: 0 };
+  const nd = nextDay(r.tr);
+  const others = TRACK_IDS.filter(tr => tr !== r.tr && nextDay(tr) <= 30 && dayStatus(tr, nextDay(tr)) === 'open');
+  const all = levelComplete();
   $app.innerHTML = `
     <main class="screen center">
       <div class="guide hero-size" id="guide"></div>
       <div class="stars">${starSvg()}${starSvg()}${starSvg()}</div>
-      <h1>${t('dayDoneTitle', { n: r.n })}</h1>
-      ${r.quizOk === null ? '' : `<p class="pill ${r.quizOk ? 'ok' : 'no'}">${t('quizScore', { r: r.quizOk ? t('quizRight') : t('quizWrong') })}</p>`}
-      <p>${last && nd > 30 ? t('dayDoneLast') : nd <= 30 ? t('dayDoneNext', { n: nd }) : ''}</p>
-      <p class="muted">${t('finishText')}</p>
-      ${nd > 30 ? `<button class="btn big" id="examBtn">${t('toExam')}</button>` : ''}
-      <button class="btn ${nd > 30 ? 'secondary' : ''} big" id="homeBtn">${t('backHome')}</button>
+      <h1>${t('dayDoneTitle', { n: r.n, m: trackName(r.tr) })}</h1>
+      ${r.total ? `<p class="pill ${r.right === r.total ? 'ok' : 'no'}">${t('quizScore2', { r: r.right, t: r.total })}</p>` : ''}
+      <p>${nd > 30 ? t('trackDoneMsg', { m: trackName(r.tr) }) : t('dayDoneNext2', { n: nd, m: trackName(r.tr) })}</p>
+      ${others.length && !all ? `<p class="muted">${t('tryOther', { m: others.map(trackName).join(t('orWord')) })}</p>` : ''}
+      ${all ? `<button class="btn big" id="examBtn">${t('toExam')}</button>` : ''}
+      <button class="btn ${all ? 'secondary' : ''} big" id="homeBtn">${t('backHome')}</button>
       ${adSlotHtml()}
     </main>`;
-  document.getElementById('homeBtn').onclick = () => go('home');
+  document.getElementById('homeBtn').onclick = () => go('home', { mapTrack: r.tr });
   const eb = document.getElementById('examBtn');
   if (eb) eb.onclick = () => go('exam');
   mountGuide('#guide', 'celebrate', 110);
@@ -685,7 +728,8 @@ function renderDayDone() {
 
 /* ================= pantalla: examen (pendiente) ================= */
 function renderExam() {
-  const all = nextDay() > 30;
+  const all = levelComplete();
+  const rows = TRACK_IDS.map(tr => `<li><strong>${trackName(tr)}</strong>: ${doneCount(tr)}/30 ${nextDay(tr) > 30 ? checkSvg(14) : ''}</li>`).join('');
   $app.innerHTML = `
     <main class="screen">
       <header class="topbar"><button class="icon-btn" id="backBtn" aria-label="${t('back')}">${backSvg()}</button><strong>${t('exam')}</strong><span class="spacer"></span></header>
@@ -693,6 +737,7 @@ function renderExam() {
       <section class="lesson-card">
         <span class="eyebrow">${all ? t('levelSoon') : t('locked')}</span>
         <h1>${all ? t('examReady') : t('examLocked')}</h1>
+        <ul class="plain">${rows}</ul>
         <p>${t('examSoon')}</p>
         <p><strong>${t('examWill')}</strong></p>
         <ul class="plain">${t('examList').map(x => `<li>${x}</li>`).join('')}</ul>
@@ -991,4 +1036,4 @@ render();
 initServices(false).then(syncAds);
 Billing.init();
 
-if (!isNative()) window.__plie = { state, go, startDay, startClass, S, PROGRAM };
+if (!isNative()) window.__plie = { state, go, startTrackDay, startClass, S, TRACKS };

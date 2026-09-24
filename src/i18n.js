@@ -296,3 +296,63 @@ Object.assign(STR.en, {
   exercisesN: '{n} exercises',
   noBlock: 'No technique today: your body rests.'
 });
+
+Object.assign(STR.es, {
+  dayDoneTitle: '¡Día {n} de {m} completado!',
+  comeBackText: 'Hoy ya has avanzado en esta modalidad. Mañana se abre el siguiente día.',
+  examLocked: 'Se abre al terminar los 30 días de Teoría, Técnica y Físico.',
+  trackDone: 'Completada',
+  trackDoneText: 'Has terminado los 30 días de esta modalidad.',
+  doneTodayShort: 'Hecho hoy',
+  startShort: 'Empezar',
+  levelRule: 'Tres modalidades, 30 días cada una. Cada día eliges cuál trabajas y solo avanza esa.',
+  whatToday: '¿Qué trabajas hoy?',
+  whatTodaySub: 'Elige una modalidad. Cada una avanza por separado, un día cada vez.',
+  hiAllToday: '¡Hoy has avanzado en las tres modalidades! Descansa, que te lo has ganado.',
+  hiMore: 'Hoy ya has avanzado en {m}. Si te apetece, puedes trabajar otra modalidad.',
+  hiPick: '¡Hola otra vez! ¿Qué te apetece trabajar hoy?',
+  nowIn: 'Ahora estás en',
+  tlCard: 'Tarjeta del día',
+  tlQuiz: 'Pregunta sobre la tarjeta',
+  tlReview: 'Pregunta de repaso del día {n}',
+  onlyThisTrack: 'Al terminar, solo avanza {m}. Las otras modalidades siguen donde estaban.',
+  reviewOf: 'Repaso del día {n}',
+  finishDay: 'Terminar',
+  quizScore2: 'Preguntas acertadas: {r} de {t}',
+  trackDoneMsg: 'Has terminado los 30 días de {m}.',
+  dayDoneNext2: 'Mañana se abre el día {n} de {m}.',
+  tryOther: 'Hoy también puedes avanzar en {m}.',
+  orWord: ' o '
+});
+Object.assign(STR.en, {
+  dayDoneTitle: '{m} day {n} complete!',
+  comeBackText: 'You already moved forward in this track today. The next day opens tomorrow.',
+  examLocked: 'Opens when you finish the 30 days of Theory, Technique and Fitness.',
+  trackDone: 'Completed',
+  trackDoneText: 'You have finished the 30 days of this track.',
+  doneTodayShort: 'Done today',
+  startShort: 'Start',
+  levelRule: 'Three tracks, 30 days each. Each day you pick one and only that one moves forward.',
+  whatToday: 'What will you work on today?',
+  whatTodaySub: 'Pick a track. Each one moves forward on its own, one day at a time.',
+  hiAllToday: 'You moved forward in all three tracks today! Rest, you have earned it.',
+  hiMore: 'You already moved forward in {m} today. If you like, you can work on another track.',
+  hiPick: 'Hello again! What would you like to work on today?',
+  nowIn: 'You are in',
+  tlCard: 'Card of the day',
+  tlQuiz: 'A question about the card',
+  tlReview: 'Review question from day {n}',
+  onlyThisTrack: 'When you finish, only {m} moves forward. The other tracks stay where they were.',
+  reviewOf: 'Review from day {n}',
+  finishDay: 'Finish',
+  quizScore2: 'Correct answers: {r} of {t}',
+  trackDoneMsg: 'You have finished the 30 days of {m}.',
+  dayDoneNext2: 'Day {n} of {m} opens tomorrow.',
+  tryOther: 'You can also move forward in {m} today.',
+  orWord: ' or '
+});
+
+STR.es.andWord = ' y ';
+STR.en.andWord = ' and ';
+STR.es.examReady = '¡Has terminado las tres modalidades!';
+STR.en.examReady = 'You finished all three tracks!';

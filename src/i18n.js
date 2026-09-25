@@ -369,7 +369,7 @@ Object.assign(STR.es, {
   selfQ_tecnica: '¿Cómo te ves en la barra y el centro?',
   selfQ_fisico: '¿Cómo están tu fuerza, tu equilibrio y tu flexibilidad?',
   selfOpts_teoria: ['Casi nada', 'Conozco lo básico (plié, tendu, posiciones)', 'Bastante: vocabulario, ballets y escuelas'],
-  selfOpts_tecnica: ['Empiezo de cero', 'Hago los pasos básicos de barra', 'Hago barra y centro con soltura, incluso piruetas'],
+  selfOpts_tecnica: ['Empiezo de cero', 'Hago la barra y algo de centro', 'Nivel alto: piruetas dobles, batterie y grand allegro'],
   selfOpts_fisico: ['Poca, me canso pronto', 'Normal', 'Mucha, entreno a menudo'],
   selfMissing: 'Responde las tres preguntas para seguir.',
   placeBubble: '¡Listo! Este es el nivel que te recomiendo.',
@@ -419,7 +419,7 @@ Object.assign(STR.en, {
   selfQ_tecnica: 'How do you feel at the barre and in the centre?',
   selfQ_fisico: 'How are your strength, balance and flexibility?',
   selfOpts_teoria: ['Almost nothing', 'I know the basics (plié, tendu, positions)', 'Quite a lot: vocabulary, ballets and schools'],
-  selfOpts_tecnica: ['Starting from zero', 'I can do the basic barre steps', 'I do barre and centre with ease, even pirouettes'],
+  selfOpts_tecnica: ['Starting from zero', 'I do barre and some centre work', 'Advanced: double pirouettes, batterie and grand allegro'],
   selfOpts_fisico: ['Low, I tire quickly', 'Average', 'High, I train often'],
   selfMissing: 'Answer all three questions to continue.',
   placeBubble: 'All set! This is the level I recommend.',
@@ -457,3 +457,9 @@ Object.assign(STR.en, {
   levelUp: '{m} moves up to level {l}!',
   changeLevel: 'Change my level'
 });
+
+Object.assign(STR.es, { detailsTitle: 'Detalles de colocación', placement: 'Siempre' });
+Object.assign(STR.en, { detailsTitle: 'Placement details', placement: 'Always' });
+
+STR.es.placeAgeCap = 'Por tu edad, la técnica y el físico avanzados se abren a partir de los 11 años.';
+STR.en.placeAgeCap = 'Because of your age, advanced technique and fitness open from age 11.';

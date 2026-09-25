@@ -104,7 +104,7 @@ export const CARDS_L2 = [
     Q(['¿Cuándo se recupera sobre todo el cuerpo?', 'Mientras duermes', 'Mientras saltas', 'Nunca'], ['When does the body mainly recover?', 'While you sleep', 'While you jump', 'Never'], 0))
 ];
 
-export const CARDS_L3 = [
+const CARDS_L3_BASE = [
   C('pirueta-t', 'pirouette',
     ['Pirueta en dehors y en dedans', 'Una pirueta es un giro sobre una pierna. En dehors gira hacia el lado de la pierna levantada; en dedans, hacia el lado de la pierna de apoyo. Se aprende primero con un cuarto y media vuelta.'],
     ['Pirouette en dehors and en dedans', 'A pirouette is a turn on one leg. En dehors turns towards the lifted leg; en dedans turns towards the supporting leg. You learn it first with quarter and half turns.'],
@@ -203,8 +203,59 @@ export const CARDS_L3 = [
     Q(['¿Qué te hace mejorar más?', 'Las correcciones de un profesor', 'Hacerlo todo muy rápido', 'Solo ver vídeos'], ['What improves you most?', 'A teacher\'s corrections', 'Doing everything very fast', 'Only watching videos'], 0))
 ];
 
+/* Tarjetas de nivel alto (teoria avanzada). */
+const CARDS_L3_NEW = [
+  C('transverso', 'posture',
+    ['Por qué "mete la tripa"', 'El transverso del abdomen es el músculo más profundo de la tripa y rodea el tronco como un corsé. Al activarlo (ombligo hacia la columna) estabilizas la pelvis y la columna, y por eso los giros y los equilibrios salen mejor. Se activa sin dejar de respirar.'],
+    ['Why "pull your tummy in"', 'The transversus abdominis is the deepest tummy muscle and wraps the trunk like a corset. Engaging it (belly button to spine) stabilises the pelvis and spine, which is why turns and balances improve. You engage it while still breathing.'],
+    Q(['¿Qué músculo rodea el tronco como un corsé?', 'El transverso del abdomen', 'El bíceps', 'El gemelo'], ['Which muscle wraps the trunk like a corset?', 'The transversus abdominis', 'The biceps', 'The calf'], 0)),
+  C('rotadores', 'stand',
+    ['Anatomía de la rotación', 'El en dehors sale sobre todo de seis músculos profundos de la cadera: piriforme, gémino superior e inferior, obturador interno y externo, y cuadrado femoral. Si fuerzas la rotación desde los pies, la rodilla se tuerce y sufre.'],
+    ['The anatomy of turnout', 'Turnout comes mainly from six deep hip muscles: piriformis, superior and inferior gemellus, internal and external obturator, and quadratus femoris. Forcing turnout from the feet twists and strains the knee.'],
+    Q(['Forzar la rotación desde los pies daña sobre todo...', 'La rodilla', 'El codo', 'El cuello'], ['Forcing turnout from the feet mainly harms...', 'The knee', 'The elbow', 'The neck'], 0)),
+  C('sickling', 'releve',
+    ['Sickling y winging', 'En media punta y en punta, el pie debe continuar la línea de la tibia. Si se curva hacia dentro (sickling, en forma de hoz) o hacia fuera en exceso (winging), el tobillo pierde estabilidad y aumenta el riesgo de torceduras.'],
+    ['Sickling and winging', 'On demi-pointe and pointe, the foot should continue the line of the shin. If it curves inwards (sickling) or too far outwards (winging), the ankle loses stability and the risk of sprains rises.'],
+    Q(['¿Qué es el sickling?', 'Curvar el pie hacia dentro', 'Saltar muy alto', 'Un tipo de giro'], ['What is sickling?', 'Curving the foot inwards', 'Jumping very high', 'A kind of turn'], 0)),
+  C('hiperext', 'posture',
+    ['Rodillas hiperextendidas', 'Muchas bailarinas tienen rodillas que se van más atrás de la línea recta. No hay que bloquearlas hacia atrás: se estiran activando cuádriceps e isquiotibiales, con el peso sobre la parte delantera del pie, para proteger la articulación.'],
+    ['Hyperextended knees', 'Many dancers have knees that go past straight. Do not lock them back: straighten them by engaging the quadriceps and hamstrings, with weight over the front of the foot, to protect the joint.'],
+    Q(['Si tus rodillas se hiperextienden, ¿qué haces?', 'Bloquearlas hacia atrás', 'Estirarlas activando los músculos sin bloquear', 'Doblarlas siempre'], ['If your knees hyperextend, what do you do?', 'Lock them back', 'Straighten them with muscle, without locking', 'Keep them bent'], 1)),
+  C('cuerpo8', 'posture',
+    ['Las ocho direcciones del cuerpo', 'En el método Cecchetti el cuerpo tiene ocho direcciones respecto al público: croisé devant, à la quatrième devant, écarté, effacé, à la seconde, épaulé, à la quatrième derrière y croisé derrière. Dominarlas da tridimensionalidad al baile.'],
+    ['The eight directions of the body', 'In the Cecchetti method the body has eight directions in relation to the audience: croisé devant, à la quatrième devant, écarté, effacé, à la seconde, épaulé, à la quatrième derrière and croisé derrière. Mastering them makes dancing three-dimensional.'],
+    Q(['¿Cuántas direcciones del cuerpo hay en el método Cecchetti?', 'Cuatro', 'Ocho', 'Doce'], ['How many body directions are there in the Cecchetti method?', 'Four', 'Eight', 'Twelve'], 1)),
+  C('arabesques', 'tendu',
+    ['Las arabesques de cada escuela', 'La arabesque cambia según la escuela: el método Vaganova tiene cuatro y el Cecchetti cinco. Cambia la posición de los brazos, del torso y la dirección respecto al público; la pierna siempre alarga la línea del cuerpo.'],
+    ['Each school\'s arabesques', 'The arabesque varies by school: the Vaganova method has four and Cecchetti has five. The arms, torso and direction to the audience change; the leg always extends the body\'s line.'],
+    Q(['¿Cuántas arabesques tiene el método Vaganova?', 'Dos', 'Cuatro', 'Siete'], ['How many arabesques does the Vaganova method have?', 'Two', 'Four', 'Seven'], 1)),
+  C('entrechat-t', 'entrechat',
+    ['Batterie: entrechat y royale', 'En el entrechat quatre las piernas se cruzan dos veces en el aire y aterrizas en la misma quinta. La royale es un changement batido: las piernas se baten antes de cambiar. Para batir hay que abrir un poco las piernas antes de cruzarlas.'],
+    ['Batterie: entrechat and royale', 'In an entrechat quatre the legs cross twice in the air and you land in the same fifth. A royale is a beaten changement: the legs beat before changing. To beat, the legs must open slightly before crossing.'],
+    Q(['En el entrechat quatre, ¿cuántas veces se cruzan las piernas?', 'Una', 'Dos', 'Cuatro'], ['In an entrechat quatre, how many times do the legs cross?', 'Once', 'Twice', 'Four times'], 1)),
+  C('fouette-t', 'fouette',
+    ['Los 32 fouettés', 'El fouetté rond de jambe en tournant encadena giros con la pierna que se abre a la segunda y vuelve a retiré. Pierina Legnani los hizo famosos en San Petersburgo en la década de 1890: 32 seguidos, que hoy son el reto del cisne negro en El lago de los cisnes.'],
+    ['The 32 fouettés', 'The fouetté rond de jambe en tournant links turns with the leg opening to second and whipping back to retiré. Pierina Legnani made them famous in St Petersburg in the 1890s: 32 in a row, today the Black Swan\'s challenge in Swan Lake.'],
+    Q(['¿Quién hizo famosos los 32 fouettés?', 'Pierina Legnani', 'Luis XIV', 'Chaikovski'], ['Who made the 32 fouettés famous?', 'Pierina Legnani', 'Louis XIV', 'Tchaikovsky'], 0)),
+  C('musicalidad', 'balance',
+    ['Musicalidad', 'El adagio suele ir en tempo lento; el petit allegro en 2/4 con acentos marcados; el grand allegro muchas veces en un vals amplio en 3/4. Bailar con musicalidad es saber dónde cae el acento y respirar la frase, no solo contar.'],
+    ['Musicality', 'Adagio is usually slow; petit allegro is often in 2/4 with sharp accents; grand allegro is often a broad 3/4 waltz. Dancing musically means knowing where the accent falls and breathing the phrase, not just counting.'],
+    Q(['Bailar con musicalidad es...', 'Solo contar rápido', 'Saber dónde cae el acento y respirar la frase', 'Ir más rápido que la música'], ['Dancing musically means...', 'Just counting fast', 'Knowing where the accent falls and breathing the phrase', 'Going faster than the music'], 1)),
+  C('grandjete-t', 'grandjete',
+    ['Grand allegro', 'El grand allegro reúne los saltos grandes que viajan: grand jeté, sissonne ouverte grande o grand pas de chat. La altura nace de un plié profundo y elástico y de un empuje potente; el torso se mantiene arriba en todo momento.'],
+    ['Grand allegro', 'Grand allegro brings together the big travelling jumps: grand jeté, big sissonne ouverte or grand pas de chat. Height comes from a deep, elastic plié and a strong push; the torso stays lifted throughout.'],
+    Q(['¿De dónde nace la altura de un grand jeté?', 'Del plié y del empuje', 'De echar los hombros atrás', 'De los brazos solamente'], ['Where does the height of a grand jeté come from?', 'The plié and the push', 'Throwing the shoulders back', 'The arms alone'], 0))
+];
+const ALL3 = [...CARDS_L3_BASE, ...CARDS_L3_NEW];
+const by3 = (id) => ALL3.find((c) => c.id === id);
+export const CARDS_L3 = [
+  'transverso', 'rotadores', 'hiperext', 'sickling', 'cuerpo8', 'arabesques', 'attitude', 'develop-t',
+  'cambre', 'pirueta-t', 'chaines', 'fouette-t', 'assemble', 'jete', 'sissonne', 'batterie',
+  'entrechat-t', 'grandjete-t', 'musicalidad', 'pasdedeux', 'coda', 'puntas2', 'escenario', 'petipa'
+].map(by3);
+
 /* Lecciones extra de teoria libre (tarjetas agrupadas por tema). */
-const pick = (ids) => ids.map((id) => [...CARDS_L2, ...CARDS_L3].find((c) => c.id === id));
+const pick = (ids) => ids.map((id) => [...CARDS_L2, ...ALL3].find((c) => c.id === id));
 const L = (id, color, title, subtitle, ids) => {
   const cards = pick(ids);
   return { id, color, mins: 3, title: { es: title[0], en: title[1] }, subtitle: { es: subtitle[0], en: subtitle[1] }, cards, quiz: cards.slice(0, 3).map((c) => c.q) };
@@ -224,6 +275,10 @@ export const EXTRA_LESSONS = [
     ['arabesque', 'attitude', 'develop-t', 'cambre']),
   L('en-la-sala', 'pink', ['En la sala', 'In the studio'], ['Direcciones, épaulement y cómo moverte por el espacio.', 'Directions, épaulement and moving through space.'],
     ['epaulement', 'croise', 'puntos', 'quinta']),
+  L('anatomia', 'lilac', ['Colocación y anatomía', 'Placement and anatomy'], ['La tripa, la rotación, las rodillas y los pies.', 'Core, turnout, knees and feet.'],
+    ['transverso', 'rotadores', 'hiperext', 'sickling']),
+  L('avanzado', 'pink', ['Técnica avanzada', 'Advanced technique'], ['Direcciones, arabesques, batterie, fouettés y grand allegro.', 'Directions, arabesques, batterie, fouettés and grand allegro.'],
+    ['cuerpo8', 'arabesques', 'entrechat-t', 'fouette-t', 'grandjete-t', 'musicalidad']),
   L('bailarin-sano', 'peach', ['Bailar con salud', 'Dancing healthily'], ['Descanso, zapatillas, puntas y la mente.', 'Rest, shoes, pointe and the mind.'],
     ['descanso2', 'zapatillas', 'puntas2', 'mente', 'escenario'])
 ];

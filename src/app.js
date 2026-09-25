@@ -1,6 +1,7 @@
 import { CLASSES, THEORY, classesOf } from './data.js';
 import { TRACKS, TRACK_IDS, LEVELS, MAX_LEVEL, weekOf, trackMinutes, CARD_POOL, exercisesUpTo } from './program.js';
 import { EXTRA_LESSONS } from './theory2.js';
+import { CORE, detailsFor } from './details.js';
 const THEORY_ALL = THEORY.concat(EXTRA_LESSONS);
 import { createGuide } from './guide.js';
 import { STR } from './i18n.js';
@@ -121,6 +122,7 @@ function recommend(exp) {
     const self = exp.self[tr] ?? 1;
     let lvl = Math.floor((base + self) / 2 + 0.25);
     if (tr === 'tecnica' && exp.years === 0) lvl = 1;        // sin experiencia, la tecnica empieza por el principio
+    if (tr !== 'teoria' && (currentAge() ?? 12) < 11) lvl = Math.min(lvl, 2);   // lo avanzado, desde los 11 anos
     out[tr] = Math.max(1, Math.min(MAX_LEVEL, lvl));
   }
   return out;
@@ -223,7 +225,7 @@ function buildTrackSteps(tr, d) {
     if (d.review) steps.push({ type: 'quiz', block: 'teoria', q: d.review, review: d.reviewDay });
     return steps;
   }
-  return d.exercises.map(ex => ({ type: 'ex', block: tr, ex: scaleEx(ex) }));
+  return d.exercises.map(ex => ({ type: 'ex', block: tr, ex: scaleEx(ex), level: levelOf(tr) }));
 }
 
 function startTrackDay(tr, n) {
@@ -235,7 +237,7 @@ function startTrackDay(tr, n) {
 }
 function startClass(id) {
   const c = getClass(id);
-  Object.assign(S, { kind: 'class', ref: id, steps: c.exercises.map(ex => ({ type: 'ex', block: c.section, ex: scaleEx(ex) })), i: 0, answers: {} });
+  Object.assign(S, { kind: 'class', ref: id, steps: c.exercises.map(ex => ({ type: 'ex', block: c.section, ex: scaleEx(ex), level: levelOf(c.section === 'fisico' ? 'fisico' : 'tecnica') })), i: 0, answers: {} });
   ensureAudio(); keepAwake(true);
   go('session');
   enterStep(0);
@@ -261,6 +263,7 @@ function buildCombo() {
     ...shuffle(strength).slice(0, 2).map(e => ({ type: 'ex', block: 'fisico', ex: withDur(e, 90) })),
     ...shuffle(stretch).slice(0, 1).map(e => ({ type: 'ex', block: 'fisico', ex: withDur(e, 90) }))
   ];
+  steps.forEach(st => { if (st.type === 'ex') st.level = levelOf(st.block); });
   return steps;
 }
 const LIB_WARM = CLASSES.flatMap(c => c.exercises).find(e => e.id === 'warmup');
@@ -555,10 +558,12 @@ function renderPlacement() {
       <h1>${t('placeTitle')}</h1>
       <p class="muted">${t('placeText')}</p>
       <div class="prows">${TRACK_IDS.map(row).join('')}</div>
+      ${(currentAge() ?? 12) < 11 ? `<p class="muted small rule">${t('placeAgeCap')}</p>` : ''}
       ${state.changingLevel ? `<p class="muted small rule">${t('placeReset')}</p>` : ''}
       <button class="btn big" id="placeOk">${state.changingLevel ? t('saveLevels') : t('startApp')}</button>
     </main>`;
   document.querySelectorAll('[data-l]').forEach(b => b.onclick = () => {
+    if (b.dataset.tr !== 'teoria' && parseInt(b.dataset.l, 10) === 3 && (currentAge() ?? 12) < 11) { toast(t('placeAgeCap')); return; }
     state.pending[b.dataset.tr] = parseInt(b.dataset.l, 10);
     const y = window.scrollY; render(); window.scrollTo(0, y);
   });
@@ -796,6 +801,19 @@ function renderDay() {
   mountGuide('#guide', firstAnim || TRACK_ANIM[tr], 70);
 }
 
+/* ================= detalles de colocacion ================= */
+function detailsHtml(st) {
+  const lvl = st.level || levelOf(st.block === 'fisico' ? 'fisico' : 'tecnica');
+  const kind = st.block === 'fisico' ? 'fisico' : 'tecnica';
+  const core = CORE[kind][lvl];
+  const list = detailsFor(st.ex.id, lvl);
+  return `<section class="details">
+    <header><span class="dl-title">${t('detailsTitle')}</span><span class="dl-level">${t('levelWord')} ${lvl}</span></header>
+    <p class="core"><strong>${t('placement')}:</strong> ${L(core)}</p>
+    ${list.length ? `<ul>${list.map(x => `<li>${L(x)}</li>`).join('')}</ul>` : ''}
+  </section>`;
+}
+
 /* ================= pantalla: sesion ================= */
 function renderSession() {
   const st = S.steps[S.i];
@@ -852,6 +870,7 @@ function renderSession() {
         </div>
       </div>
       <ol class="steps">${(ex.steps[state.lang] || ex.steps.es).map(s => `<li>${s}</li>`).join('')}</ol>
+      ${detailsHtml(st)}
       <p class="tip"><strong>${t('tip')}:</strong> ${L(ex.tip)}</p>
       ${hasBeat ? `<div class="metro-row"><span>${t('metronome')} · ${ex.bpm} bpm</span><button class="chip ${S.metro ? 'on' : ''}" id="metroBtn">${S.metro ? t('on') : t('off')}</button></div>` : ''}
       ${nextSt && nextSt.type === 'ex' ? `<p class="next-up">→ ${L(nextSt.ex.name)}</p>` : ''}

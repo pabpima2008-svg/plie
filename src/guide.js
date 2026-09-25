@@ -120,6 +120,34 @@ const Q2 = {
   plie2open: pose({ hip: 180, l: { x: 40, k: 0.55 }, r: { x: 40, k: 0.55 }, ...both(ARMS.open) })
 };
 Q2.pirRspin = merge(Q2.pirR, { spin: 1 });
+
+/* ---------- poses del nivel avanzado ---------- */
+const CDP = (side) => ({ [side]: { x: 9, y: 244, tx: 1, ty: 12, k: 1 } });
+const Q3 = {
+  cdpR: pose({ lean: -2, ...CDP('r'), ...both(ARMS.sec) }),
+  cdpL: pose({ lean: 2, ...CDP('l'), ...both(ARMS.sec) }),
+  frapR: pose({ lean: -4, r: LEGSIDE(26, { y: straight(26).y - 6, ty: 20 }), ...both(ARMS.sec) }),
+  frapL: pose({ lean: 4, l: LEGSIDE(26, { y: straight(26).y - 6, ty: 20 }), ...both(ARMS.sec) }),
+  pbA: pose({ lean: -2, r: { x: 4, y: 244, tx: 2, ty: 12, k: 1 }, ...both(ARMS.sec) }),
+  pbB: pose({ lean: -2, r: { x: 15, y: 244, tx: 2, ty: 12, k: 1 }, ...both(ARMS.sec) }),
+  enlairOut: pose({ lean: -6, r: { ...straight(48), tx: 10, ty: 10, k: 0.05 }, ...both(ARMS.sec) }),
+  enlairIn: pose({ lean: -6, r: { x: 34, y: 214, tx: 4, ty: 12, k: 1 }, ...both(ARMS.sec) }),
+  adagHigh: pose({ hip: 140, lean: -8, l: { ...ON_DEMI }, r: { ...straight(78, 140), tx: 10, ty: 8, k: 0.05 }, al: { ...ARMS.sec }, ar: { ...ARMS.haut } }),
+  cambreL: pose({ lean: -14, tilt: -14, al: { a: 40, f: 20 }, ar: { ...ARMS.haut } }),
+  cambreR: pose({ lean: 14, tilt: 14, ar: { a: 40, f: 20 }, al: { ...ARMS.haut } }),
+  fourth: pose({ hip: 172, l: { x: 4, k: 0.55 }, r: { x: 26, k: 0.55, tx: 10, ty: 8 }, al: { ...ARMS.sec }, ar: { ...ARMS.prem } }),
+  pirL: pose({ hip: 136, r: { ...ON_DEMI }, ...RET_REL('l'), ...both(ARMS.prem) }),
+  releveTight: pose({ hip: 136, l: { x: 4, ...ON_DEMI }, r: { x: 4, ...ON_DEMI }, ...both(ARMS.prem) }),
+  jumpTight: pose({ hip: 112, l: { x: 3, y: 234, tx: 2, ty: 20 }, r: { x: 3, y: 234, tx: 2, ty: 20 }, al: { a: 20, f: 5 }, ar: { a: 20, f: 5 } }),
+  jumpBeat: pose({ hip: 112, l: { x: 13, y: 234, tx: 2, ty: 20 }, r: { x: 13, y: 234, tx: 2, ty: 20 }, al: { a: 20, f: 5 }, ar: { a: 20, f: 5 } }),
+  sissAir: pose({ hip: 108, l: { ...straight(30, 108), tx: 8, ty: 14, k: 0.05 }, r: { ...straight(30, 108), tx: 8, ty: 14, k: 0.05 }, al: { ...ARMS.sec }, ar: { ...ARMS.haut } }),
+  sissLand: pose({ hip: 170, lean: 4, l: { k: 0.5 }, r: { ...straight(38, 170), tx: 9, ty: 14, k: 0.05 }, al: { ...ARMS.sec }, ar: { ...ARMS.haut } }),
+  chatAir: pose({ hip: 112, l: { x: 30, y: 196, tx: 0, ty: 12, k: 1 }, r: { x: 30, y: 196, tx: 0, ty: 12, k: 1 }, ...both(ARMS.open) }),
+  jeteAir: pose({ hip: 104, l: { ...straight(72, 104), tx: 10, ty: 8, k: 0.02 }, r: { ...straight(72, 104), tx: 10, ty: 8, k: 0.02 }, al: { ...ARMS.sec }, ar: { ...ARMS.haut } }),
+  fouOut: pose({ hip: 168, l: { k: 0.45 }, r: { ...straight(45, 168), tx: 9, ty: 12, k: 0.05 }, ...both(ARMS.sec) }),
+  pistol: pose({ hip: 186, lean: 3, l: { x: 12, tx: 3, ty: 7, k: 0.35 }, r: { x: 20, y: 228, tx: 2, ty: 12, k: 0.3 }, ...both(ARMS.prem) })
+};
+const spun = (pz, sp) => merge(pz, { spin: sp });
 const A = (name) => ARMS[name];
 
 /* ---------- animaciones: [compas, pose], ciclo de `beats` compases ---------- */
@@ -170,6 +198,21 @@ export const ANIMS = {
   pirouette: { beats: 8, keys: [[0, P.stand], [2, Q2.pliePrep], [3, Q2.pirR], [5, Q2.pirRspin], [6, Q2.pirRspin], [7, Q2.pliePrep], [8, P.stand]] },
   develop: { beats: 16, keys: [[0, P.stand_sec], [2, Q2.retSR], [5, Q2.develR], [7, Q2.tenduSR], [8, P.stand_sec], [10, Q2.retSL], [13, Q2.develL], [15, Q2.tenduSL], [16, P.stand_sec]] },
   balance: { beats: 6, keys: [[0, Q2.swayL], [3, Q2.swayR], [6, Q2.swayL]] },
+  frappe: { beats: 8, keys: [[0, Q3.cdpR], [0.6, Q3.frapR], [2, Q3.cdpR], [2.6, Q3.frapR], [4, P.stand_sec], [4.01, Q3.cdpL], [4.6, Q3.frapL], [6, Q3.cdpL], [6.6, Q3.frapL], [8, P.stand_sec]] },
+  petitbatt: { beats: 4, keys: [[0, Q3.pbA], [0.5, Q3.pbB], [1, Q3.pbA], [1.5, Q3.pbB], [2, Q3.pbA], [2.5, Q3.pbB], [3, Q3.pbA], [3.5, Q3.pbB], [4, Q3.pbA]] },
+  enlair: { beats: 8, keys: [[0, P.stand_sec], [1, Q2.tenduSR], [2, Q3.enlairOut], [3, Q3.enlairIn], [4, Q3.enlairOut], [5, Q3.enlairIn], [6, Q3.enlairOut], [7, Q2.tenduSR], [8, P.stand_sec]] },
+  adagio: { beats: 24, keys: [[0, P.stand_sec], [3, Q2.retSR], [7, Q2.develR], [10, Q3.adagHigh], [14, Q3.adagHigh], [17, Q2.tenduSR], [18, P.stand_sec], [20, Q3.cambreL], [22, Q3.cambreR], [24, P.stand_sec]] },
+  cambre: { beats: 16, keys: [[0, Q2.standOpen], [4, Q2.grandplie], [8, Q2.standOpen], [10, Q3.cambreL], [12, P.stand], [14, Q3.cambreR], [16, Q2.standOpen]] },
+  dblpir: { beats: 8, keys: [[0, P.stand], [1.5, Q3.fourth], [2.5, Q2.pirR], [4.5, spun(Q2.pirR, 2)], [5.5, spun(Q2.pirR, 2)], [6.5, spun(Q3.fourth, 2)], [8, spun(P.stand, 2)]] },
+  pirdedans: { beats: 8, keys: [[0, P.stand], [1.5, Q3.fourth], [2.5, Q3.pirL], [4.5, spun(Q3.pirL, -1)], [5.5, spun(Q3.pirL, -1)], [6.5, spun(Q3.fourth, -1)], [8, spun(P.stand, -1)]] },
+  chaines: { beats: 4, keys: [[0, Q3.releveTight], [1, spun(Q3.releveTight, 1)], [2, spun(Q3.releveTight, 2)], [3, spun(Q3.releveTight, 3)], [4, spun(Q3.releveTight, 4)]] },
+  pique: { beats: 8, keys: [[0, P.stand_sec], [1, Q2.tenduSR], [2, Q3.pirL], [3.5, spun(Q3.pirL, 1)], [4, spun(P.stand_sec, 1)], [5, spun(Q2.tenduSR, 1)], [6, spun(Q3.pirL, 1)], [7.5, spun(Q3.pirL, 2)], [8, spun(P.stand_sec, 2)]] },
+  entrechat: { beats: 4, keys: [[0, P.plie1open], [0.8, Q3.jumpTight], [1.1, Q3.jumpBeat], [1.4, Q3.jumpTight], [2.2, P.plie1open], [2.8, Q3.jumpTight], [3.1, Q3.jumpBeat], [3.4, Q3.jumpTight], [4, P.plie1open]] },
+  sissonne: { beats: 8, keys: [[0, P.plie1open], [1, Q3.sissAir], [2, Q3.sissLand], [3, P.plie1open], [4, P.stand], [5, P.plie1open], [6, Q3.sissAir], [7, Q3.sissLand], [8, P.plie1open]] },
+  pasdechat: { beats: 4, keys: [[0, P.plie1open], [1, Q3.chatAir], [2, P.plie1open], [3, Q2.standOpen], [4, P.plie1open]] },
+  grandjete: { beats: 8, keys: [[0, P.stand_sec], [1.5, Q2.tenduSR], [3, P.plie1open], [4, Q3.jeteAir], [5, Q3.sissLand], [6.5, P.plie1open], [8, P.stand_sec]] },
+  fouette: { beats: 8, keys: [[0, Q3.fouOut], [1, Q2.pirR], [2, spun(Q3.fouOut, 1)], [3, spun(Q2.pirR, 2)], [4, spun(Q3.fouOut, 2)], [5, spun(Q2.pirR, 3)], [6, spun(Q3.fouOut, 3)], [7, spun(Q2.pirR, 4)], [8, spun(Q3.fouOut, 4)]] },
+  pistol: { beats: 8, keys: [[0, P.parPrem], [4, Q3.pistol], [8, P.parPrem]] },
   allegro: { beats: 8, keys: [[0, Q2.standOpen], [1, P.plie1open], [2, P.jump], [3, P.plie1open], [4, Q2.jumpOpen], [5, Q2.plie2open], [6, Q2.jumpOpen], [7, P.plie1open], [8, Q2.standOpen]] }
 };
 

@@ -6,12 +6,14 @@
    ------------------------------------------------------------------ */
 import { CLASSES } from './data.js';
 import { NEW_EXERCISES, PLANS } from './levels.js';
+import { ADV_EXERCISES } from './advanced.js';
 import { CARDS_L2, CARDS_L3 } from './theory2.js';
 
 // Biblioteca de ejercicios: todos los ejercicios de las clases, por id.
 export const LIB = {};
 for (const c of CLASSES) for (const e of c.exercises) LIB[e.id] = e;
 for (const e of NEW_EXERCISES) LIB[e.id] = e;
+for (const e of ADV_EXERCISES) LIB[e.id] = e;
 
 export const LEVELS = [
   { n: 1, name: { es: 'Inicial', en: 'Beginner' } },
@@ -273,6 +275,43 @@ const FOCUS = {
     ['Enfoque: espalda larga', 'Focus: long back']
   ]
 };
+const FOCUS_UP = {
+  tecnica: {
+    2: [
+      ['Enfoque: rotación desde la cadera', 'Focus: turnout from the hips'],
+      ['Enfoque: quinta bien cruzada', 'Focus: a well-crossed fifth'],
+      ['Enfoque: cabeza y brazos coordinados', 'Focus: head and arms together'],
+      ['Enfoque: tripa dentro al subir a relevé', 'Focus: core in as you rise to relevé'],
+      ['Enfoque: caderas niveladas', 'Focus: level hips'],
+      ['Enfoque: plié elástico en los saltos', 'Focus: an elastic plié in jumps'],
+      ['Enfoque: rodillas estiradas de verdad', 'Focus: truly straight knees']
+    ],
+    3: [
+      ['Enfoque: musicalidad y fraseo', 'Focus: musicality and phrasing'],
+      ['Enfoque: épaulement en cada paso', 'Focus: épaulement in every step'],
+      ['Enfoque: limpieza de los cierres en quinta', 'Focus: clean closes in fifth'],
+      ['Enfoque: altura sin perder colocación', 'Focus: height without losing placement'],
+      ['Enfoque: el eje y la vista en los giros', 'Focus: axis and spotting in turns'],
+      ['Enfoque: el plié de recepción', 'Focus: the landing plié'],
+      ['Enfoque: brazos que respiran', 'Focus: breathing arms']
+    ]
+  },
+  fisico: {
+    2: [
+      ['Enfoque: control en la bajada', 'Focus: control on the way down'],
+      ['Enfoque: abdomen y respiración', 'Focus: core and breathing'],
+      ['Enfoque: tobillos rectos', 'Focus: straight ankles'],
+      ['Enfoque: una pierna, mismo control', 'Focus: one leg, same control']
+    ],
+    3: [
+      ['Enfoque: fuerza de extensión', 'Focus: extension strength'],
+      ['Enfoque: resistencia en los saltos', 'Focus: jump endurance'],
+      ['Enfoque: estabilidad del tronco', 'Focus: trunk stability'],
+      ['Enfoque: pies y tobillos de acero', 'Focus: feet and ankles of steel'],
+      ['Enfoque: flexibilidad activa', 'Focus: active flexibility']
+    ]
+  }
+};
 function withTitles(days, restTitle, focus, firstTitle, known = []) {
   const seen = new Set(known);
   return days.map((d) => {
@@ -330,12 +369,12 @@ const idsOf = (lines) => lines.flatMap((l) => l.trim().split(/\s+/).map((t) => t
 {
   const T1 = TECH_PLAN, T2 = PLANS.tecnica[2], T3 = PLANS.tecnica[3];
   TRACKS.tecnica[1] = withTitles(mkDays(T1), REVIEW, FOCUS.tecnica, { es: 'Tu primera clase', en: 'Your first class' });
-  TRACKS.tecnica[2] = withTitles(mkDays(T2), REVIEW, FOCUS.tecnica, { es: 'Primera clase intermedia', en: 'First intermediate class' }, idsOf(T1));
-  TRACKS.tecnica[3] = withTitles(mkDays(T3), REVIEW, FOCUS.tecnica, { es: 'Primera clase avanzada', en: 'First advanced class' }, idsOf(T1.concat(T2)));
+  TRACKS.tecnica[2] = withTitles(mkDays(T2), REVIEW, FOCUS_UP.tecnica[2], { es: 'Primera clase intermedia', en: 'First intermediate class' }, idsOf(T1));
+  TRACKS.tecnica[3] = withTitles(mkDays(T3), REVIEW, FOCUS_UP.tecnica[3], { es: 'Primera clase avanzada', en: 'First advanced class' }, idsOf(T1.concat(T2)));
   const F1 = PHYS_PLAN, F2 = PLANS.fisico[2], F3 = PLANS.fisico[3];
   TRACKS.fisico[1] = withTitles(mkDays(F1), STRETCH, FOCUS.fisico, { es: 'Tu primer entrenamiento', en: 'Your first workout' });
-  TRACKS.fisico[2] = withTitles(mkDays(F2), STRETCH, FOCUS.fisico, { es: 'Primer entrenamiento intermedio', en: 'First intermediate workout' }, idsOf(F1));
-  TRACKS.fisico[3] = withTitles(mkDays(F3), STRETCH, FOCUS.fisico, { es: 'Primer entrenamiento avanzado', en: 'First advanced workout' }, idsOf(F1.concat(F2)));
+  TRACKS.fisico[2] = withTitles(mkDays(F2), STRETCH, FOCUS_UP.fisico[2], { es: 'Primer entrenamiento intermedio', en: 'First intermediate workout' }, idsOf(F1));
+  TRACKS.fisico[3] = withTitles(mkDays(F3), STRETCH, FOCUS_UP.fisico[3], { es: 'Primer entrenamiento avanzado', en: 'First advanced workout' }, idsOf(F1.concat(F2)));
 }
 
 /* Todas las tarjetas de teoria por nivel (para la sesion combinada). */

@@ -10,21 +10,24 @@ import {
 
 /* ------------------------------------------------------------------
    CONFIGURACION
-   IMPORTANTE antes de publicar:
-   1. Cambia TEST_MODE a false.
-   2. Pon tu ID de banner real de AdMob en BANNER_ID_REAL.
-   3. Pon tu ID de app de AdMob en android/app/src/main/res/values/strings.xml
-      (admob_app_id) - ver PUBLICAR.md.
+   No hay que tocar este archivo para publicar. Los valores reales llegan
+   al compilar desde las variables de GitHub (ver PUBLICAR.md):
+     ADMOB_BANNER_ID  -> ID del bloque de anuncios banner
+     ADMOB_APP_ID     -> ID de la app en AdMob (se usa en Android)
+     PRIVACY_URL      -> URL de la politica de privacidad
+   Si faltan, se usan los anuncios de PRUEBA de Google (no dan dinero).
    ------------------------------------------------------------------ */
+/* global __BANNER_ID__, __PRIVACY_URL__, __RELEASE__ */
+const TEST_BANNER = 'ca-app-pub-3940256099942544/6300978111';
+const INJECTED_BANNER = typeof __BANNER_ID__ !== 'undefined' ? __BANNER_ID__ : '';
 export const CONFIG = {
-  TEST_MODE: true,
-  // Muestra en Ajustes el interruptor 'Modo prueba' (desbloquea todos los dias). Ponlo a false antes de publicar.
-  TEST_TOOLS: true,
-  // ID de banner de prueba oficial de Google (no genera ingresos):
-  BANNER_ID_TEST: 'ca-app-pub-3940256099942544/6300978111',
-  BANNER_ID_REAL: 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY',
+  // Anuncios de prueba mientras no haya un ID real de banner.
+  TEST_MODE: !INJECTED_BANNER,
+  BANNER_ID: INJECTED_BANNER || TEST_BANNER,
+  // El interruptor 'Modo prueba' solo existe en la version de pruebas, nunca en la de Play.
+  TEST_TOOLS: !(typeof __RELEASE__ !== 'undefined' && __RELEASE__),
   PRODUCT_REMOVE_ADS: 'remove_ads',
-  PRIVACY_URL: 'https://example.com/privacidad' // pon aqui tu URL real
+  PRIVACY_URL: (typeof __PRIVACY_URL__ !== 'undefined' && __PRIVACY_URL__) || ''
 };
 
 export const isNative = () => {
@@ -39,6 +42,14 @@ export function adProfile(age) {
   if (age < 13) return 'child';
   if (age < 18) return 'teen';
   return 'adult';
+}
+
+// Alto de la barra de navegacion de Android (lo inyecta Capacitor como variable CSS).
+function bottomInset() {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom');
+    return Math.max(0, parseInt(v, 10) || 0);
+  } catch { return 0; }
 }
 
 export const Ads = {
@@ -91,10 +102,10 @@ export const Ads = {
     if (!this.ready || !isNative()) return;
     try {
       await AdMob.showBanner({
-        adId: CONFIG.TEST_MODE ? CONFIG.BANNER_ID_TEST : CONFIG.BANNER_ID_REAL,
+        adId: CONFIG.BANNER_ID,
         adSize: BannerAdSize.ADAPTIVE_BANNER,
         position: BannerAdPosition.BOTTOM_CENTER,
-        margin: 0,
+        margin: bottomInset(),   // por encima de la barra de navegacion de Android
         isTesting: CONFIG.TEST_MODE,
         npa: this.profile !== 'adult' // anuncios no personalizados para menores
       });

@@ -13,6 +13,7 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -20,8 +21,8 @@
             </intent-filter>
         </activity>
 
-        <!-- ID de app de AdMob (en strings.xml). Ahora es el ID de PRUEBA de Google. -->
-        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="@string/admob_app_id" />
+        <!-- ID de app de AdMob: llega de la variable ADMOB_APP_ID de GitHub (si no, se usa el de PRUEBA de Google). -->
+        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobAppId}" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

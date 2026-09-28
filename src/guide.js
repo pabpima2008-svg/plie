@@ -295,53 +295,39 @@ function tutuPath(w, top, base, bumps, depth) {
 }
 
 let uid = 0;
+/* Personaje sencillo: formas planas en dos colores, sin detalles sobrantes. */
+const INK = '#5a2a47';     // cuerpo
+const TUTU = '#f58aa6';    // falda y zapatillas
 export function createGuide(container) {
   container.innerHTML = '';
-  const id = 'g' + (++uid);
+  uid++;
   const svg = el('svg', { viewBox: '-40 -84 280 384', class: 'guide-svg', role: 'img', 'aria-hidden': 'true' });
-  const defs = el('defs', {}, svg);
-  const body = el('linearGradient', { id: id + 'b', x1: '0', y1: '0', x2: '0', y2: '1' }, defs);
-  el('stop', { offset: '0', 'stop-color': '#6b3457' }, body);
-  el('stop', { offset: '1', 'stop-color': '#40203a' }, body);
-  const tul = el('linearGradient', { id: id + 't', x1: '0', y1: '0', x2: '0', y2: '1' }, defs);
-  el('stop', { offset: '0', 'stop-color': '#ffc2d6' }, tul);
-  el('stop', { offset: '1', 'stop-color': '#f7859f' }, tul);
-  const B = `url(#${id}b)`;
-
-  const ground = el('ellipse', { cx: CX, cy: FLOOR + 4, rx: 50, ry: 7, fill: 'rgba(160, 60, 90, .16)' }, svg);
+  const ground = el('ellipse', { cx: CX, cy: FLOOR + 4, rx: 46, ry: 6, fill: 'rgba(160, 60, 90, .13)' }, svg);
   const g = el('g', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
 
   const legEls = [0, 1].map(() => ({
-    thigh: el('line', { stroke: B, 'stroke-width': 18 }, g),
-    shin: el('line', { stroke: B, 'stroke-width': 14 }, g),
-    shoe: el('line', { stroke: '#f28aa8', 'stroke-width': 11 }, g)
+    thigh: el('line', { stroke: INK, 'stroke-width': 15 }, g),
+    shin: el('line', { stroke: INK, 'stroke-width': 12 }, g),
+    shoe: el('line', { stroke: TUTU, 'stroke-width': 10 }, g)
   }));
-  const torso = el('path', { fill: B, stroke: B, 'stroke-width': 10 }, g);
-  const tutuBack = el('path', { d: tutuPath(52, -4, 8, 7, 11), fill: '#f47a98' }, g);
-  const tutuFront = el('path', { d: tutuPath(44, -8, 4, 6, 10), fill: `url(#${id}t)` }, g);
-  const neck = el('line', { stroke: B, 'stroke-width': 11 }, g);
+  const torso = el('path', { fill: INK, stroke: INK, 'stroke-width': 10 }, g);
+  const tutuBack = el('path', { d: 'M-46 0 Q0 -12 46 0 Q50 8 40 11 Q0 20 -40 11 Q-50 8 -46 0 Z', fill: TUTU, opacity: '.55' }, g);
+  const tutuFront = el('path', { d: 'M-38 -4 Q0 -14 38 -4 Q42 4 32 7 Q0 14 -32 7 Q-42 4 -38 -4 Z', fill: TUTU }, g);
+  const neck = el('line', { stroke: INK, 'stroke-width': 10 }, g);
 
-  // cabeza: grupo que se mueve y se inclina entero
   const headG = el('g', {}, g);
-  el('circle', { cx: 0, cy: -27, r: 12, fill: B }, headG);                  // moño
-  el('path', { d: 'M9 -34 L22 -42 L20 -27 Z M9 -34 L3 -47 L16 -44 Z', fill: '#f5728f', stroke: '#f5728f', 'stroke-width': 3, 'stroke-linejoin': 'round' }, headG); // lazo
-  el('circle', { cx: 9, cy: -35, r: 3.6, fill: '#ff9db6' }, headG);
-  el('circle', { cx: 0, cy: 0, r: 25, fill: B }, headG);                    // cara
-  const eyes = [-9, 9].map((x) => {
-    const eg = el('g', { transform: `translate(${x} -1)` }, headG);
-    const white = el('ellipse', { cx: 0, cy: 0, rx: 6, ry: 7.5, fill: '#fff' }, eg);
-    const pupil = el('circle', { cx: 0.6, cy: 1.2, r: 3.8, fill: '#2a1426' }, eg);
-    const shine = el('circle', { cx: 2, cy: -0.8, r: 1.4, fill: '#fff' }, eg);
-    return { white, pupil, shine };
+  el('circle', { cx: 0, cy: -26, r: 11, fill: INK }, headG);   // mono
+  el('circle', { cx: 0, cy: 0, r: 23, fill: INK }, headG);     // cabeza
+  const eyes = [-8, 8].map((x) => {
+    const white = el('ellipse', { cx: x, cy: 0, rx: 3.2, ry: 3.2, fill: '#fff' }, headG);
+    return { white, pupil: { setAttribute() {} }, shine: { setAttribute() {} } };
   });
-  el('circle', { cx: -15, cy: 10, r: 4.6, fill: '#ff8fb0', opacity: '.8' }, headG);   // mofletes
-  el('circle', { cx: 15, cy: 10, r: 4.6, fill: '#ff8fb0', opacity: '.8' }, headG);
-  const mouth = el('path', { d: 'M-5 11 Q0 16 5 11', fill: 'none', stroke: '#ffd3e0', 'stroke-width': 2.4 }, headG);
+  const mouth = { setAttribute() {} };
 
   const armEls = [0, 1].map(() => ({
-    up: el('line', { stroke: B, 'stroke-width': 12 }, g),
-    fo: el('line', { stroke: B, 'stroke-width': 10 }, g),
-    hand: el('circle', { r: 6.5, fill: B }, g)
+    up: el('line', { stroke: INK, 'stroke-width': 11 }, g),
+    fo: el('line', { stroke: INK, 'stroke-width': 9 }, g),
+    hand: el('circle', { r: 5.5, fill: INK }, g)
   }));
   container.appendChild(svg);
 
@@ -383,7 +369,7 @@ export function createGuide(container) {
     const ph = clock % 3500;
     const blink = ph < 140 ? Math.abs(ph - 70) / 70 : 1;
     eyes.forEach((e) => {
-      e.white.setAttribute('ry', (7.5 * Math.max(0.12, blink)).toFixed(2));
+      e.white.setAttribute('ry', (3.2 * Math.max(0.15, blink)).toFixed(2));
       e.pupil.setAttribute('r', blink < 0.5 ? '0' : '3.8');
       e.shine.setAttribute('r', blink < 0.5 ? '0' : '1.4');
     });

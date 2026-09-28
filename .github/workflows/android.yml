@@ -24,11 +24,8 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Empaquetar la parte web
-        run: npm run build
-
-      - name: Sincronizar con Android
-        run: npx cap sync android
+      - name: Revisar el contenido de la app
+        run: npm run validate
 
       - name: Preparar clave de firma (si existe)
         env:
@@ -37,21 +34,48 @@ jobs:
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
             echo "KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
-            echo "Clave de firma encontrada: el AAB saldra firmado."
-          else
-            echo "No hay clave de firma: el AAB saldra sin firmar (solo sirve el APK de prueba)."
           fi
 
-      - name: Compilar APK de prueba y AAB de publicacion
-        working-directory: android
+      # 1) APK de PRUEBA: anuncios de prueba de Google y con "Modo prueba" en Ajustes.
+      - name: Compilar APK de prueba
         env:
+          PLIE_RELEASE: '0'
+          PRIVACY_URL: ${{ vars.PRIVACY_URL || format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          npm run build
+          npx cap sync android
+          cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+
+      # 2) AAB para GOOGLE PLAY: anuncios reales (si hay IDs) y sin "Modo prueba".
+      - name: Compilar AAB para Google Play
+        env:
+          PLIE_RELEASE: '1'
+          ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
+          ADMOB_BANNER_ID: ${{ vars.ADMOB_BANNER_ID }}
+          PRIVACY_URL: ${{ vars.PRIVACY_URL || format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           VERSION_CODE: ${{ github.run_number }}
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug bundleRelease --no-daemon
+          npm run build
+          npx cap sync android
+          cd android && ./gradlew bundleRelease --no-daemon
+
+      - name: Resumen
+        env:
+          HAS_KEY: ${{ secrets.KEYSTORE_B64 != '' }}
+          HAS_APP: ${{ vars.ADMOB_APP_ID != '' }}
+          HAS_BANNER: ${{ vars.ADMOB_BANNER_ID != '' }}
+        run: |
+          {
+            echo "## Plié · versión ${{ github.run_number }}"
+            echo ""
+            if [ "$HAS_KEY" = "true" ]; then echo "- ✅ AAB firmado: listo para subir a Google Play."; else echo "- ⚠️ Falta la clave de firma (secretos KEYSTORE_*): el AAB no sirve para Play."; fi
+            if [ "$HAS_APP" = "true" ] && [ "$HAS_BANNER" = "true" ]; then echo "- ✅ Anuncios reales de AdMob en el AAB."; else echo "- ⚠️ Faltan las variables ADMOB_APP_ID y/o ADMOB_BANNER_ID: el AAB lleva anuncios de PRUEBA (no dan dinero)."; fi
+            echo "- ℹ️ El APK de prueba siempre usa anuncios de prueba."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Guardar APK de prueba
         uses: actions/upload-artifact@v4

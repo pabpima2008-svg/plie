@@ -7,6 +7,7 @@ import { createGuide } from './guide.js';
 import { STR } from './i18n.js';
 import { Ads, Billing, CONFIG, adProfile, isNative } from './ads.js';
 import { App as CapApp } from '@capacitor/app';
+import { KeepAwake } from '@capacitor-community/keep-awake';
 
 /* ================= utilidades ================= */
 const $app = document.getElementById('app');
@@ -163,6 +164,10 @@ function startMetro(bpm) {
 
 let wakeLock = null;
 async function keepAwake(on) {
+  if (isNative()) {
+    try { if (on) await KeepAwake.keepAwake(); else await KeepAwake.allowSleep(); } catch { /* sin permiso */ }
+    return;
+  }
   try {
     if (on && navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen');
     else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
@@ -1189,7 +1194,7 @@ function renderSettings() {
       </section>
       <section class="card set">
         <button class="link block" id="ageBtn">${t('changeAge')}</button>
-        <a class="link block" href="${CONFIG.PRIVACY_URL}" target="_blank" rel="noopener">${t('privacy')}</a>
+        ${CONFIG.PRIVACY_URL ? `<a class="link block" href="${CONFIG.PRIVACY_URL}" target="_blank" rel="noopener">${t('privacy')}</a>` : ''}
       </section>
       <section class="card set">
         <h2>${t('about')}</h2>

@@ -10,3 +10,4 @@ android/capacitor-cordova-android-plugins/build/
 android/local.properties
 *.jks
 *.keystore
+scripts/.guide-bundle.js

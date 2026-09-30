@@ -37,7 +37,10 @@ Guarda `plie-upload.jks` y `SECRETOS-GITHUB.txt` en un sitio seguro. **Si los pi
 1. Entra en admob.google.com con la misma cuenta de Google y acepta las condiciones. Rellena los datos de pago cuando te lo pida.
 2. **Apps > Añadir app > Android**. Si ya aparece en Play, búscala; si no, elige que aún no está publicada. Nombre: Plié.
 3. Copia el **ID de la app**, que tiene esta forma: `ca-app-pub-1234567890123456~1234567890`.
-4. Dentro de la app: **Bloques de anuncios > Añadir > Banner**. Nombre: "Banner principal". Copia el **ID del bloque**: `ca-app-pub-1234567890123456/1234567890`.
+4. Dentro de la app crea **tres bloques de anuncios** (Bloques de anuncios > Añadir) y copia el ID de cada uno (`ca-app-pub-.../...`):
+   - **Banner** · nombre "Banner principal". Es la franja de abajo en el inicio, los días, los resultados y los ajustes.
+   - **Intersticial** · nombre "Fin de sesión". Es el anuncio a pantalla completa al terminar una sesión: uno cada 2 sesiones (cada 3 en menores de 13) y con al menos 4 minutos entre uno y otro. Nunca sale durante el ejercicio.
+   - **Bonificado** · nombre "Desbloquear día". Es el anuncio que la persona elige ver para adelantar el día siguiente de una modalidad, como máximo una vez al día por modalidad. En "Recompensa" pon cantidad 1 y artículo "dia".
 5. En la configuración de la app en AdMob, revisa **Configuración de la app > Contenido dirigido a menores** y ajusta las categorías de anuncios bloqueadas a contenido apto para todos los públicos.
 6. **Privacidad y mensajes**: crea el mensaje de consentimiento para el RGPD (Europa). La app ya lo muestra a los adultos donde haga falta.
 7. En GitHub: **Settings > Secrets and variables > Actions > pestaña Variables > New repository variable**. Crea estas dos:
@@ -45,14 +48,16 @@ Guarda `plie-upload.jks` y `SECRETOS-GITHUB.txt` en un sitio seguro. **Si los pi
 | Nombre | Valor |
 |---|---|
 | `ADMOB_APP_ID` | el ID de la app (con `~`) |
-| `ADMOB_BANNER_ID` | el ID del bloque (con `/`) |
+| `ADMOB_BANNER_ID` | el ID del bloque banner |
+| `ADMOB_INTERSTITIAL_ID` | el ID del bloque intersticial |
+| `ADMOB_REWARDED_ID` | el ID del bloque bonificado |
 
 **No pongas tus anuncios reales en tu propio móvil** ni pulses en ellos: AdMob puede bloquear la cuenta. El APK de prueba siempre usa anuncios de prueba; los reales solo van en el archivo de Play.
 
 ## Paso 6 · Compilar
 
 1. En tu repositorio: pestaña **Actions > "Compilar app Android" > Run workflow**. Tarda unos 10 minutos.
-2. Al terminar, el **resumen** te dice si el archivo para Play está firmado y si lleva anuncios reales. Tiene que salir todo en ✅.
+2. Al terminar, el **resumen** te dice si el archivo para Play está firmado y qué anuncios reales lleva (banner, intersticial y bonificado). Tiene que salir todo en ✅.
 3. En *Artifacts* descarga:
    - `plie-apk-de-prueba`: para instalar en tu móvil y probar. Lleva el interruptor "Modo prueba" y anuncios de prueba.
    - `plie-aab-para-play-store`: el archivo `.aab` que se sube a Google Play. No lleva modo prueba.

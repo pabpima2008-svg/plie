@@ -91,7 +91,24 @@ function dayStatus(tr, n) {
   if (n === 1) return 'open';
   if (!isDone(tr, n - 1)) return state.testMode ? 'open' : 'locked';
   if (state.testMode) return 'open';
-  return trackDates(tr)[n - 1] < todayStr() ? 'open' : 'tomorrow';
+  if (trackDates(tr)[n - 1] < todayStr()) return 'open';
+  const e = (state.prog.early || {})[tr];
+  return e && e.date === todayStr() && e.day === n ? 'open' : 'tomorrow';
+}
+/* Desbloqueo anticipado del dia siguiente viendo un anuncio con recompensa (1 por modalidad y dia). */
+const earlyUsedToday = (tr) => { const e = (state.prog.early || {})[tr]; return !!(e && e.date === todayStr()); };
+async function unlockEarly(tr, n) {
+  if (earlyUsedToday(tr)) { toast(t('earlyUsed')); return; }
+  let ok = true;
+  if (!state.premium) {
+    if (!Ads.rewardedAvailable()) { toast(t('earlyNoAd')); Ads.prepareRewarded(); return; }
+    ok = await Ads.showRewarded();
+  }
+  if (!ok) { toast(t('earlyNotEarned')); return; }
+  state.prog.early = { ...(state.prog.early || {}), [tr]: { date: todayStr(), day: n } };
+  saveProg();
+  toast(t('earlyDone', { n }));
+  go('day', { track: tr, dayN: n });
 }
 const doneToday = (tr) => Object.values(trackDates(tr)).includes(todayStr());
 const trackFinished = (tr) => nextDay(tr) > 30;
@@ -349,18 +366,27 @@ function finishSession() {
     saveProg();
     state.lastResult = { tr, n, first, right, total: qs.length };
     go('dayDone');
+    adAfterSession();
   } else if (S.kind === 'combo') {
     if (!state.prog.comboDates.includes(todayStr())) state.prog.comboDates.push(todayStr());
     state.prog.minutes += comboMinutes(S.steps);
     saveProg();
     state.lastResult = { combo: true, mins: comboMinutes(S.steps) };
     go('dayDone');
+    adAfterSession();
   } else {
     state.done[S.ref] = (state.done[S.ref] || 0) + 1;
     LS.set('done', state.done);
     state.classId = S.ref;
     go('finish');
+    adAfterSession();
   }
+}
+
+/* Anuncio a pantalla completa al terminar (con frecuencia limitada y nunca durante el ejercicio). */
+function adAfterSession() {
+  if (state.premium) return;
+  setTimeout(() => { if (['dayDone', 'finish'].includes(state.screen)) Ads.afterSession(); }, 900);
 }
 
 function leaveSession() {
@@ -790,7 +816,8 @@ function renderDay() {
           <p class="muted">${dayMins(tr, d)} ${t('minutes')}${isDone(tr, n) ? ' · ' + t('doneOnce') : ''}</p>
         </div>
       </div>
-      ${st === 'done' || st === 'open' ? `<button class="btn big" id="startBtn">${isDone(tr, n) ? t('repeatDay', { n }) : t('startDay', { n })}</button>` : `<div class="wait"><strong>${t('comeBack', { n })}</strong><span>${t('comeBackText')}</span></div>`}
+      ${st === 'done' || st === 'open' ? `<button class="btn big" id="startBtn">${isDone(tr, n) ? t('repeatDay', { n }) : t('startDay', { n })}</button>` : `<div class="wait"><strong>${t('comeBack', { n })}</strong><span>${t('comeBackText')}</span></div>
+        ${st === 'tomorrow' && !earlyUsedToday(tr) ? `<button class="btn big reward-btn" id="earlyBtn">${state.premium ? t('earlyPremium') : t('earlyAd')}</button><p class="muted small rule">${t('earlyNote')}</p>` : ''}`}
       ${body}
       <p class="muted small rule">${t('onlyThisTrack', { m: trackName(tr) })}</p>
       ${tr === 'teoria' ? '' : `<section class="note">
@@ -802,6 +829,8 @@ function renderDay() {
   document.getElementById('backBtn').onclick = () => go('home', { mapTrack: tr });
   const sb = document.getElementById('startBtn');
   if (sb) sb.onclick = () => startTrackDay(tr, n);
+  const eb = document.getElementById('earlyBtn');
+  if (eb) eb.onclick = () => unlockEarly(tr, n);
   const firstAnim = tr === 'teoria' ? 'portdebras' : (d.exercises.find(e => !['warmup', 'f-warm'].includes(e.id)) || d.exercises[0]).anim;
   mountGuide('#guide', firstAnim || TRACK_ANIM[tr], 70);
 }

@@ -53,6 +53,8 @@ jobs:
           PLIE_RELEASE: '1'
           ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
           ADMOB_BANNER_ID: ${{ vars.ADMOB_BANNER_ID }}
+          ADMOB_INTERSTITIAL_ID: ${{ vars.ADMOB_INTERSTITIAL_ID }}
+          ADMOB_REWARDED_ID: ${{ vars.ADMOB_REWARDED_ID }}
           PRIVACY_URL: ${{ vars.PRIVACY_URL || format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -68,12 +70,16 @@ jobs:
           HAS_KEY: ${{ secrets.KEYSTORE_B64 != '' }}
           HAS_APP: ${{ vars.ADMOB_APP_ID != '' }}
           HAS_BANNER: ${{ vars.ADMOB_BANNER_ID != '' }}
+          HAS_INTER: ${{ vars.ADMOB_INTERSTITIAL_ID != '' }}
+          HAS_REWARD: ${{ vars.ADMOB_REWARDED_ID != '' }}
         run: |
           {
             echo "## Plié · versión ${{ github.run_number }}"
             echo ""
             if [ "$HAS_KEY" = "true" ]; then echo "- ✅ AAB firmado: listo para subir a Google Play."; else echo "- ⚠️ Falta la clave de firma (secretos KEYSTORE_*): el AAB no sirve para Play."; fi
             if [ "$HAS_APP" = "true" ] && [ "$HAS_BANNER" = "true" ]; then echo "- ✅ Anuncios reales de AdMob en el AAB."; else echo "- ⚠️ Faltan las variables ADMOB_APP_ID y/o ADMOB_BANNER_ID: el AAB lleva anuncios de PRUEBA (no dan dinero)."; fi
+            if [ "$HAS_INTER" = "true" ]; then echo "- ✅ Anuncio a pantalla completa (intersticial) activo."; else echo "- ⚠️ Falta ADMOB_INTERSTITIAL_ID: no habrá anuncios a pantalla completa."; fi
+            if [ "$HAS_REWARD" = "true" ]; then echo "- ✅ Anuncio con recompensa activo."; else echo "- ⚠️ Falta ADMOB_REWARDED_ID: no habrá anuncios con recompensa."; fi
             echo "- ℹ️ El APK de prueba siempre usa anuncios de prueba."
           } >> "$GITHUB_STEP_SUMMARY"
 

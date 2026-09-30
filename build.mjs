@@ -15,6 +15,8 @@ await build({
   define: {
     __RELEASE__: JSON.stringify(release),
     __BANNER_ID__: JSON.stringify(env.ADMOB_BANNER_ID || ''),
+    __INTER_ID__: JSON.stringify(env.ADMOB_INTERSTITIAL_ID || ''),
+    __REWARD_ID__: JSON.stringify(env.ADMOB_REWARDED_ID || ''),
     __PRIVACY_URL__: JSON.stringify(env.PRIVACY_URL || '')
   }
 });

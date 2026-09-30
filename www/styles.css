@@ -348,3 +348,12 @@ select, input[type=number] {
 .details .core { background: #fff1f4; border-radius: 14px; padding: 10px 12px; margin: 0 0 8px; font-size: 16px; }
 .details ul { margin: 0 0 8px; padding-left: 20px; }
 .details li { margin-bottom: 7px; }
+
+/* ---------- anuncios a pantalla completa y con recompensa ---------- */
+.reward-btn { background: linear-gradient(135deg, #ffcf7a, var(--gold) 55%, #e39a3a); box-shadow: 0 6px 16px rgba(227, 154, 58, .3); }
+.mock-ad { position: fixed; inset: 0; z-index: 90; background: rgba(30, 12, 22, .88); display: grid; place-items: center; padding: 24px; }
+.mock-box { background: #fff; border-radius: 26px; padding: 26px 22px; max-width: 360px; width: 100%; text-align: center; display: grid; gap: 10px; }
+.mock-box strong { font-size: 22px; }
+.mock-box p { color: var(--muted); margin: 0; }
+.mock-tag { justify-self: center; font-size: 12px; font-weight: 800; background: #fff1d6; color: #9a6313; padding: 4px 10px; border-radius: 99px; }
+.mock-box .btn { justify-self: center; min-width: 140px; }

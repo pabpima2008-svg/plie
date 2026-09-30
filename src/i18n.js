@@ -50,7 +50,7 @@ export const STR = {
     language: 'Idioma',
     changeAge: 'Cambiar fecha de nacimiento',
     removeAds: 'Quitar anuncios',
-    removeAdsText: 'Pago único. Sin anuncios para siempre.',
+    removeAdsText: 'Pago único. Sin anuncios para siempre y días extra sin ver anuncios.',
     adsRemoved: 'Anuncios quitados. ¡Gracias!',
     restore: 'Restaurar compra',
     privacy: 'Política de privacidad',
@@ -112,7 +112,7 @@ export const STR = {
     language: 'Language',
     changeAge: 'Change date of birth',
     removeAds: 'Remove ads',
-    removeAdsText: 'One-time payment. No ads, ever.',
+    removeAdsText: 'One-time payment. No ads, ever, and extra days without watching ads.',
     adsRemoved: 'Ads removed. Thank you!',
     restore: 'Restore purchase',
     privacy: 'Privacy policy',
@@ -463,3 +463,22 @@ Object.assign(STR.en, { detailsTitle: 'Placement details', placement: 'Always' }
 
 STR.es.placeAgeCap = 'Por tu edad, la técnica y el físico avanzados se abren a partir de los 11 años.';
 STR.en.placeAgeCap = 'Because of your age, advanced technique and fitness open from age 11.';
+
+Object.assign(STR.es, {
+  earlyAd: '▶ Ver un anuncio y seguir hoy',
+  earlyPremium: 'Desbloquear hoy',
+  earlyNote: 'Puedes adelantar un día por modalidad cada día. Escucha a tu cuerpo: descansar también es entrenar.',
+  earlyUsed: 'Hoy ya has adelantado un día en esta modalidad.',
+  earlyNoAd: 'No hay anuncios disponibles ahora mismo. Inténtalo en un momento.',
+  earlyNotEarned: 'Hay que ver el anuncio completo para desbloquear el día.',
+  earlyDone: '¡Día {n} desbloqueado!'
+});
+Object.assign(STR.en, {
+  earlyAd: '▶ Watch an ad to keep going today',
+  earlyPremium: 'Unlock today',
+  earlyNote: 'You can move one day ahead per track each day. Listen to your body: resting is training too.',
+  earlyUsed: 'You already moved a day ahead in this track today.',
+  earlyNoAd: 'No ads are available right now. Try again in a moment.',
+  earlyNotEarned: 'You need to watch the whole ad to unlock the day.',
+  earlyDone: 'Day {n} unlocked!'
+});

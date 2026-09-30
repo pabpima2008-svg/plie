@@ -40,7 +40,7 @@ SESIÓN COMBINADA
 PARA TODAS LAS EDADES
 Pensada para niñas, niños, adolescentes y adultos. Los más pequeños tienen sesiones más cortas y el nivel avanzado se abre a partir de los 11 años.
 
-La app es gratuita con anuncios. Con un único pago puedes quitarlos para siempre.
+La app es gratuita con anuncios. Con un único pago puedes quitarlos para siempre y desbloquear un día extra en cada modalidad sin ver anuncios.
 
 Los ejercicios son orientativos y no sustituyen a un profesor de ballet. Baila con un adulto cerca si eres menor, en un suelo que no resbale, y para si sientes dolor.
 
@@ -70,7 +70,7 @@ Not sure what to do today? Mix theory, technique and fitness in one session, dif
 FOR ALL AGES
 Made for children, teenagers and adults. Younger dancers get shorter sessions, and the advanced level opens from age 11.
 
-The app is free with ads. A single payment removes them for good.
+The app is free with ads. A single payment removes them for good and lets you unlock an extra day in each track without watching ads.
 
 Exercises are for guidance only and do not replace a ballet teacher. If you are under 18, dance with an adult nearby, on a non-slip floor, and stop if you feel pain.
 

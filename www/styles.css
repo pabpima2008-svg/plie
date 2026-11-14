@@ -357,3 +357,5 @@ select, input[type=number] {
 .mock-box p { color: var(--muted); margin: 0; }
 .mock-tag { justify-self: center; font-size: 12px; font-weight: 800; background: #fff1d6; color: #9a6313; padding: 4px 10px; border-radius: 99px; }
 .mock-box .btn { justify-self: center; min-width: 140px; }
+.note.left { text-align: left; margin-bottom: 8px; }
+.note.left li { margin-bottom: 10px; }

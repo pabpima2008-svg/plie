@@ -22,7 +22,7 @@ TRES MODALIDADES, TU RITMO
 Cada día eliges qué trabajar: Teoría, Técnica o Físico. Cada modalidad tiene su propio camino de 30 días y avanza por separado.
 
 UN NIVEL PARA TI
-Al empezar te preguntamos tu experiencia y cómo te ves, y te recomendamos un nivel en cada modalidad: Inicial, Intermedio o Avanzado. Puedes cambiarlo cuando quieras.
+Al empezar te preguntamos tu experiencia y cómo te ves, y te recomendamos un nivel en cada modalidad: Inicial, Intermedio o Avanzado. Al terminar los 30 días, haz el examen de nivel para subir al siguiente.
 
 • Inicial: postura, posiciones, pliés, tendus, relevés y tus primeros saltos.
 • Intermedio: grand plié, fondus, grands battements, développés, piruetas y pequeño allegro.
@@ -52,7 +52,7 @@ THREE TRACKS, YOUR PACE
 Each day you choose what to work on: Theory, Technique or Fitness. Each track has its own 30-day path and moves forward on its own.
 
 A LEVEL FOR YOU
-When you start, we ask about your experience and how you see yourself, then recommend a level for each track: Beginner, Intermediate or Advanced. You can change it at any time.
+When you start, we ask about your experience and how you see yourself, then recommend a level for each track: Beginner, Intermediate or Advanced. After 30 days, take the level exam to move up.
 
 • Beginner: posture, positions, pliés, tendus, relevés and your first jumps.
 • Intermediate: grand plié, fondus, grands battements, développés, pirouettes and petit allegro.

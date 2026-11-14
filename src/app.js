@@ -1,7 +1,7 @@
 import { CLASSES, THEORY, classesOf } from './data.js';
 import { TRACKS, TRACK_IDS, LEVELS, MAX_LEVEL, weekOf, trackMinutes, CARD_POOL, exercisesUpTo } from './program.js';
 import { EXTRA_LESSONS } from './theory2.js';
-import { CORE, detailsFor } from './details.js';
+import { CORE, detailsFor, STRETCH_IDS } from './details.js';
 const THEORY_ALL = THEORY.concat(EXTRA_LESSONS);
 import { createGuide } from './guide.js';
 import { STR } from './i18n.js';
@@ -194,7 +194,7 @@ async function keepAwake(on) {
 /* ================= anuncios ================= */
 function setAdHeight(h) { document.documentElement.style.setProperty('--ad-h', (h || 0) + 'px'); }
 Ads.onHeight = setAdHeight;
-const AD_SCREENS = ['home', 'section', 'detail', 'day', 'dayDone', 'finish', 'exam', 'settings', 'combo'];
+const AD_SCREENS = ['home', 'section', 'detail', 'day', 'dayDone', 'finish', 'exam', 'examResult', 'settings', 'combo'];
 const screenWantsAds = () => AD_SCREENS.includes(state.screen);
 async function syncAds() {
   const want = !state.premium && state.birth && screenWantsAds();
@@ -297,6 +297,73 @@ function startCombo(steps) {
   enterStep(0);
 }
 
+/* ================= examen de nivel ================= */
+const EXAM_PASS = 0.7;   // 70 % para aprobar
+function shuffleQ(q) {
+  const n = q.options.es.length;
+  const order = shuffle([...Array(n).keys()]);
+  return {
+    q: q.q,
+    options: { es: order.map(i => q.options.es[i]), en: order.map(i => q.options.en[i]) },
+    answer: order.indexOf(q.answer)
+  };
+}
+function pickSpread(list, k) {
+  if (list.length <= k) return list.slice();
+  const out = [];
+  for (let i = 0; i < k; i++) out.push(list[Math.round(i * (list.length - 1) / (k - 1))]);
+  return [...new Set(out)];
+}
+function buildExam(tr) {
+  const lv = levelOf(tr);
+  if (tr === 'teoria') {
+    const pool = CARD_POOL[lv].map(c => c.q).filter(Boolean);
+    return shuffle(pool).slice(0, 15).map(q => ({ type: 'quiz', block: 'teoria', q: shuffleQ(q), exam: true }));
+  }
+  // Tecnica y fisico: la clase del dia 30 del nivel, algo mas corta, con autoevaluacion tras cada ejercicio.
+  const day30 = TRACKS[tr][lv][29].exercises;
+  const warm = day30.filter(e => e.id === 'warmup' || e.id === 'f-warm');
+  const bow = day30.filter(e => e.id === 'bow');
+  const main = day30.filter(e => !['warmup', 'f-warm', 'bow'].includes(e.id));
+  const chosen = pickSpread(main, tr === 'tecnica' ? 8 : 7);
+  const steps = [];
+  const add = (e, self) => {
+    const ex = scaleEx({ ...e, dur: Math.max(45, Math.round(e.dur * 0.7 / 15) * 15) });
+    steps.push({ type: 'ex', block: tr, ex, level: lv });
+    if (self) steps.push({ type: 'self', block: tr, ex, level: lv });
+  };
+  warm.forEach(e => add(e, false));
+  chosen.forEach(e => add(e, !STRETCH_IDS.includes(e.id)));
+  bow.forEach(e => add(e, false));
+  return steps;
+}
+function examFailedToday(tr) { return trackOf(tr).examFail === todayStr() && !state.testMode; }
+function startExam(tr) {
+  if (examFailedToday(tr)) { toast(t('examRetryTomorrow')); return; }
+  Object.assign(S, { kind: 'exam', track: tr, ref: levelOf(tr), steps: buildExam(tr), i: 0, answers: {}, selfs: {} });
+  ensureAudio(); keepAwake(true);
+  go('session');
+  enterStep(0);
+}
+function gradeExam() {
+  let got = 0, max = 0;
+  const wrong = [];
+  S.steps.forEach((st, i) => {
+    if (st.type === 'quiz') {
+      max += 1;
+      if (S.answers[i] === st.q.answer) got += 1;
+      else wrong.push({ q: st.q.q, a: (st.q.options[state.lang] || st.q.options.es)[st.q.answer] });
+    } else if (st.type === 'self') {
+      max += 1;
+      const v = S.selfs[i] ?? 0;
+      got += v;
+      if (v < 1) wrong.push({ ex: st.ex.name, v });
+    }
+  });
+  const pct = max ? got / max : 0;
+  return { pct, pass: pct >= EXAM_PASS, wrong };
+}
+
 function stopSession() { clearInterval(S.timer); S.timer = null; S.running = false; stopMetro(); keepAwake(false); }
 
 function enterStep(i) {
@@ -367,6 +434,20 @@ function finishSession() {
     state.lastResult = { tr, n, first, right, total: qs.length };
     go('dayDone');
     adAfterSession();
+  } else if (S.kind === 'exam') {
+    const tr = S.track, lv = S.ref;
+    const g = gradeExam();
+    if (g.pass) {
+      const passed = trackOf(tr).passed.concat(lv);
+      if (lv < MAX_LEVEL) state.prog.tracks[tr] = { ...emptyTrack(lv + 1), passed };
+      else trackOf(tr).passed = passed;
+    } else {
+      trackOf(tr).examFail = todayStr();
+    }
+    saveProg();
+    state.lastExam = { tr, lv, ...g };
+    go('examResult');
+    adAfterSession();
   } else if (S.kind === 'combo') {
     if (!state.prog.comboDates.includes(todayStr())) state.prog.comboDates.push(todayStr());
     state.prog.minutes += comboMinutes(S.steps);
@@ -386,12 +467,13 @@ function finishSession() {
 /* Anuncio a pantalla completa al terminar (con frecuencia limitada y nunca durante el ejercicio). */
 function adAfterSession() {
   if (state.premium) return;
-  setTimeout(() => { if (['dayDone', 'finish'].includes(state.screen)) Ads.afterSession(); }, 900);
+  setTimeout(() => { if (['dayDone', 'finish', 'examResult'].includes(state.screen)) Ads.afterSession(); }, 900);
 }
 
 function leaveSession() {
   if (S.kind === 'day') go('day', { track: S.track, dayN: S.ref });
   else if (S.kind === 'combo') go('combo');
+  else if (S.kind === 'exam') go('exam', { track: S.track });
   else go('detail', { classId: S.ref });
 }
 
@@ -857,7 +939,7 @@ function renderSession() {
   const head = `
     <header class="topbar">
       <button class="icon-btn" id="quitBtn" aria-label="${t('quit')}">${closeSvg()}</button>
-      <span class="progress-text"><span class="bchip">${trackName(st.block)}${S.kind === 'day' ? ' · ' + t('dayWord') + ' ' + S.ref : ''}</span> ${t('step', { n: S.i + 1, m: total })}</span>
+      <span class="progress-text"><span class="bchip">${trackName(st.block)}${S.kind === 'day' ? ' · ' + t('dayWord') + ' ' + S.ref : S.kind === 'exam' ? ' · ' + t('examShort') : ''}</span> ${t('step', { n: S.i + 1, m: total })}</span>
       <span class="spacer"></span>
     </header>
     <div class="sbar"><i style="width:${pct}%"></i></div>`;
@@ -870,6 +952,35 @@ function renderSession() {
       <div class="controls two">
         <button class="btn secondary" id="prevBtn" ${S.i === 0 ? 'disabled' : ''}>${t('prev')}</button>
         <button class="btn" id="nextBtn">${t('next')}</button>
+      </div>`;
+  } else if (st.type === 'self') {
+    const opts = t('selfEval_' + st.block);
+    const cur = S.selfs[S.i];
+    const VAL = [1, 0.5, 0];
+    const checks = detailsFor(st.ex.id, st.level).slice(0, 3);
+    body = `
+      <div class="stage short"><div id="guide" class="guide"></div></div>
+      <article class="lesson-card">
+        <span class="eyebrow">${t('selfEvalEyebrow')}</span>
+        <h1>${t('selfEvalQ', { m: L(st.ex.name) })}</h1>
+        ${checks.length ? `<p class="muted small">${t('selfEvalCheck')}</p><ul class="plain">${checks.map(x => `<li>${L(x)}</li>`).join('')}</ul>` : ''}
+      </article>
+      <div class="opts">${opts.map((o, i) => `<button class="opt ${cur === VAL[i] ? 'sel' : ''}" data-v="${VAL[i]}">${o}</button>`).join('')}</div>
+      <p class="muted small rule">${t('selfEvalHonest')}</p>
+      <div class="controls two">
+        <button class="btn secondary" id="prevBtn">${t('prev')}</button>
+        <button class="btn" id="nextBtn" ${cur === undefined ? 'aria-disabled="true"' : ''}>${S.i + 1 === total ? t('seeResult') : t('next')}</button>
+      </div>`;
+  } else if (st.type === 'quiz' && st.exam) {
+    const opts = st.q.options[state.lang] || st.q.options.es;
+    const picked = S.answers[S.i] ?? null;
+    body = `
+      <div class="stage short"><div id="guide" class="guide"></div></div>
+      <article class="lesson-card"><span class="eyebrow">${t('question')} ${S.i + 1} ${t('of')} ${total}</span><h1>${L(st.q.q)}</h1></article>
+      <div class="opts">${opts.map((o, i) => `<button class="opt ${picked === i ? 'sel' : ''}" data-o="${i}">${o}</button>`).join('')}</div>
+      <div class="controls two">
+        <button class="btn secondary" id="prevBtn" ${S.i === 0 ? 'disabled' : ''}>${t('prev')}</button>
+        <button class="btn" id="nextBtn" ${picked === null ? 'aria-disabled="true"' : ''}>${S.i + 1 === total ? t('seeResult') : t('next')}</button>
       </div>`;
   } else if (st.type === 'quiz') {
     const opts = st.q.options[state.lang] || st.q.options.es;
@@ -920,14 +1031,18 @@ function renderSession() {
   const prev = document.getElementById('prevBtn');
   if (prev) prev.onclick = () => { if (S.i > 0) enterStep(S.i - 1); };
   const nx = document.getElementById('nextBtn');
-  if (st.type === 'quiz') {
+  if (st.type === 'self') {
+    document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { S.selfs[S.i] = parseFloat(b.dataset.v); renderSession(); });
+    nx.onclick = () => { if (S.selfs[S.i] === undefined) { toast(t('answerFirst')); return; } nextStep(); };
+    mountGuide('#guide', st.ex.anim, st.ex.bpm || 60);
+  } else if (st.type === 'quiz') {
     const picked = S.answers[S.i] ?? null;
     document.querySelectorAll('[data-o]').forEach(b => b.onclick = () => {
       S.answers[S.i] = parseInt(b.dataset.o, 10);
       renderSession();
     });
     nx.onclick = () => { if (picked === null) { toast(t('answerFirst')); return; } nextStep(); };
-    mountGuide('#guide', picked === null ? 'coach' : picked === st.q.answer ? 'celebrate' : 'coach', 90);
+    mountGuide('#guide', st.exam ? 'coach' : picked === null ? 'coach' : picked === st.q.answer ? 'celebrate' : 'coach', 90);
   } else if (st.type === 'card') {
     nx.onclick = nextStep;
     mountGuide('#guide', st.card.anim, 60);
@@ -986,38 +1101,61 @@ function renderDayDone() {
   mountGuide('#guide', 'celebrate', 110);
 }
 
-/* ================= pantalla: examen de una modalidad (pendiente) ================= */
+/* ================= pantalla: examen de una modalidad ================= */
 function renderExam() {
   const tr = state.track;
   const lv = levelOf(tr);
   const fin = trackFinished(tr);
   const top = allLevelsDone(tr);
+  const failed = examFailedToday(tr);
+  const parts = t('examParts_' + tr);
   $app.innerHTML = `
     <main class="screen">
       <header class="topbar"><button class="icon-btn" id="backBtn" aria-label="${t('back')}">${backSvg()}</button><strong>${t('examOf', { m: trackName(tr), l: lv })}</strong><span class="spacer"></span></header>
       <div class="stage"><div id="guide" class="guide"></div></div>
       <section class="lesson-card">
-        <span class="eyebrow">${top ? t('trackDone') : fin ? t('levelSoon') : t('locked')}</span>
+        <span class="eyebrow">${top ? t('trackDone') : fin ? t('examReadyEyebrow') : t('locked')}</span>
         <h1>${top ? t('allLevelsDone') : fin ? t('examReadyTrack') : t('examLockedTrack')}</h1>
         <p><strong>${trackName(tr)}</strong> · ${t('levelWord')} ${lv} (${levelName(lv)}): ${doneCount(tr)}/30 ${t('daysWord')}</p>
-        ${top ? '' : `<p>${t('examSoon2', { next: lv < MAX_LEVEL ? levelName(lv + 1) : '' })}</p>
-        <p><strong>${t('examWill')}</strong></p>
-        <ul class="plain">${t('examList_' + tr).map(x => `<li>${x}</li>`).join('')}</ul>`}
+        ${top ? '' : `
+        <p><strong>${t('examHow')}</strong></p>
+        <ul class="plain">${parts.map(x => `<li>${x}</li>`).join('')}</ul>
+        <p>${t('examPassRule', { next: lv < MAX_LEVEL ? levelName(lv + 1) : '' })}</p>`}
       </section>
-      ${fin && !top && state.testMode ? `<button class="btn big" id="passBtn">${t('testPass')}</button>` : ''}
+      ${fin && !top ? (failed
+        ? `<div class="wait"><strong>${t('examRetryTomorrow')}</strong><span>${t('examRetryText')}</span></div>`
+        : `<button class="btn big" id="examStart">${t('examStart')}</button>
+           ${tr !== 'teoria' ? `<section class="note"><h2>${t('before')}</h2><ul>${t('beforeList').map(x => `<li>${x}</li>`).join('')}</ul></section>` : ''}`) : ''}
       ${adSlotHtml()}
     </main>`;
   document.getElementById('backBtn').onclick = () => go('home', { mapTrack: tr });
-  const pb = document.getElementById('passBtn');
-  if (pb) pb.onclick = () => {
-    const passed = trackOf(tr).passed.concat(lv);
-    if (lv < MAX_LEVEL) state.prog.tracks[tr] = { ...emptyTrack(lv + 1), passed };
-    else trackOf(tr).passed = passed;
-    saveProg();
-    toast(lv < MAX_LEVEL ? t('levelUp', { m: trackName(tr), l: lv + 1 }) : t('allLevelsDone'));
-    go('home', { mapTrack: tr });
-  };
+  const sb = document.getElementById('examStart');
+  if (sb) sb.onclick = () => startExam(tr);
   mountGuide('#guide', fin ? 'celebrate' : 'coach', 90);
+}
+
+function renderExamResult() {
+  const r = state.lastExam;
+  if (!r) { go('home'); return; }
+  const pct = Math.round(r.pct * 100);
+  const VAL_TXT = { 0.5: t('selfHalf'), 0: t('selfNo') };
+  const fails = r.wrong.slice(0, 8).map(w => w.q
+    ? `<li><strong>${L(w.q)}</strong><br><span class="muted">${t('rightAnswer')}: ${w.a}</span></li>`
+    : `<li><strong>${L(w.ex)}</strong> · <span class="muted">${VAL_TXT[w.v]}</span></li>`).join('');
+  const next = r.lv < MAX_LEVEL ? r.lv + 1 : null;
+  $app.innerHTML = `
+    <main class="screen center">
+      <div class="guide hero-size" id="guide"></div>
+      ${r.pass ? `<div class="stars">${starSvg()}${starSvg()}${starSvg()}</div>` : ''}
+      <h1>${r.pass ? t('examPassed') : t('examFailed')}</h1>
+      <p class="pill ${r.pass ? 'ok' : 'no'}">${t('examScore', { p: pct })}</p>
+      <p>${r.pass ? (next ? t('examPassedNext', { m: trackName(r.tr), l: next, n: levelName(next) }) : t('allLevelsDone')) : t('examFailedText')}</p>
+      ${fails ? `<section class="note left"><h2>${r.pass ? t('examToPolish') : t('examToReview')}</h2><ul>${fails}</ul></section>` : ''}
+      <button class="btn big" id="homeBtn">${t('backHome')}</button>
+      ${adSlotHtml()}
+    </main>`;
+  document.getElementById('homeBtn').onclick = () => go('home', { mapTrack: r.tr });
+  mountGuide('#guide', r.pass ? 'celebrate' : 'coach', 110);
 }
 
 /* ================= practica libre ================= */
@@ -1270,6 +1408,7 @@ function render() {
     case 'session': renderSession(); break;
     case 'dayDone': renderDayDone(); break;
     case 'exam': renderExam(); break;
+    case 'examResult': renderExamResult(); break;
     case 'section': renderSection(); break;
     case 'lesson': renderLesson(); break;
     case 'detail': renderDetail(); break;
@@ -1318,4 +1457,4 @@ render();
 initServices(false).then(syncAds);
 Billing.init();
 
-if (!isNative()) window.__plie = { state, go, startTrackDay, startClass, S, TRACKS, saveProg };
+if (!isNative()) window.__plie = { state, go, startTrackDay, startClass, startExam, S, TRACKS, saveProg };

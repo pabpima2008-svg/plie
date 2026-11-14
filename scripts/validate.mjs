@@ -60,7 +60,8 @@ const appSrc = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8'
 const used = new Set([...appSrc.matchAll(/\bt\('([a-zA-Z0-9_]+)'\s*[,)]/g)].map(m => m[1]));
 for (const k of used) if (!(k in STR.es)) err(`texto "${k}" usado en la app pero no definido`);
 // Prefijos dinamicos: t('block' + ...), t('sec_' + ...), t('selfQ_' + ...), t('examList_' + tr)
-for (const tr of TRACK_IDS) for (const pre of ['sec_', 'secdesc_', 'selfQ_', 'selfOpts_', 'examList_']) if (!(pre + tr in STR.es)) err(`texto "${pre + tr}" no definido`);
+for (const tr of TRACK_IDS) for (const pre of ['sec_', 'secdesc_', 'selfQ_', 'selfOpts_', 'examParts_']) if (!(pre + tr in STR.es)) err(`texto "${pre + tr}" no definido`);
+for (const k of ['selfEval_tecnica', 'selfEval_fisico']) if (!(k in STR.es)) err(`texto "${k}" no definido`);
 for (const b of ['blockTeoria', 'blockTecnica', 'blockFisico']) if (!(b in STR.es)) err(`texto "${b}" no definido`);
 
 console.log(`Ejercicios: ${Object.keys(LIB).length} · Días de programa: ${days} · Lecciones libres: ${THEORY.length + EXTRA_LESSONS.length} · Animaciones: ${animNames.size} · Textos: ${esK.length}`);

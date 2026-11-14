@@ -1122,6 +1122,7 @@ function renderExam() {
         <ul class="plain">${parts.map(x => `<li>${x}</li>`).join('')}</ul>
         <p>${t('examPassRule', { next: lv < MAX_LEVEL ? levelName(lv + 1) : '' })}</p>`}
       </section>
+      ${!fin && !top && CONFIG.TEST_TOOLS && state.testMode ? `<button class="btn secondary big" id="fillBtn">${t('testFill30')}</button>` : ''}
       ${fin && !top ? (failed
         ? `<div class="wait"><strong>${t('examRetryTomorrow')}</strong><span>${t('examRetryText')}</span></div>`
         : `<button class="btn big" id="examStart">${t('examStart')}</button>
@@ -1131,6 +1132,8 @@ function renderExam() {
   document.getElementById('backBtn').onclick = () => go('home', { mapTrack: tr });
   const sb = document.getElementById('examStart');
   if (sb) sb.onclick = () => startExam(tr);
+  const fb = document.getElementById('fillBtn');
+  if (fb) fb.onclick = () => { for (let d = 1; d <= 30; d++) if (!trackDates(tr)[d]) trackDates(tr)[d] = '2000-01-01'; saveProg(); render(); };
   mountGuide('#guide', fin ? 'celebrate' : 'coach', 90);
 }
 

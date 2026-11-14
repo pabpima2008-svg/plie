@@ -537,3 +537,6 @@ Object.assign(STR.en, {
   examToPolish: 'To polish',
   examToReview: 'To review'
 });
+
+STR.es.testFill30 = 'Marcar los 30 días como hechos (modo prueba)';
+STR.en.testFill30 = 'Mark all 30 days as done (test mode)';

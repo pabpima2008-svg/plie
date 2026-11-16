@@ -10,10 +10,11 @@ Guía en orden, de principio a fin. Los menús de Google y GitHub cambian a vece
 
 ## Paso 1 · Subir el proyecto a GitHub (una sola vez)
 
-1. Crea una cuenta gratis en github.com.
-2. Instala **GitHub Desktop** (desktop.github.com) e inicia sesión.
-3. Descomprime `plie-app.zip`. En GitHub Desktop: **File > Add local repository** y elige la carpeta `plie`.
-4. Pulsa **Publish repository**, con el nombre `plie`. **Quita la marca "Keep this code private"**: hace falta que sea público para que la política de privacidad tenga una web gratis.
+1. Instala **GitHub Desktop** (desktop.github.com) e inicia sesión con tu cuenta `pabpima2008-svg`.
+2. Descomprime `plie-app.zip` en una carpeta fácil de encontrar (por ejemplo Documentos). Saldrá la carpeta `plie`.
+3. En GitHub Desktop: **File > Add local repository**, elige la carpeta `plie` y pulsa **Add repository**.
+4. Arriba pulsa **Publish repository**. Nombre: `plie`. **Quita la marca "Keep this code private"**: tiene que ser público para que la política de privacidad tenga web gratis. Pulsa **Publish repository**.
+5. Entra en github.com/pabpima2008-svg/plie y comprueba que están las carpetas (`android`, `docs`, `src`, `store`…).
 
 ## Paso 2 · Clave de firma (una sola vez)
 
@@ -23,9 +24,10 @@ Guarda `plie-upload.jks` y `SECRETOS-GITHUB.txt` en un sitio seguro. **Si los pi
 
 ## Paso 3 · Política de privacidad en internet
 
-1. En GitHub, abre `docs/index.html`, pulsa el lápiz y cambia `[ESCRIBE AQUÍ TU CORREO]` y `[WRITE YOUR EMAIL HERE]` por tu correo de contacto. Guarda con **Commit changes**.
-2. **Settings > Pages**: en *Source* elige **Deploy from a branch**, rama `main` y carpeta `/docs`. Guarda.
-3. En un par de minutos estará en `https://TU-USUARIO.github.io/plie/`. La app ya enlaza esa dirección sola.
+Tu correo ya está puesto en la política.
+
+1. En tu repositorio: **Settings > Pages**. En *Source* elige **Deploy from a branch**, rama `main` y carpeta `/docs`. Pulsa **Save**.
+2. En un par de minutos estará en `https://pabpima2008-svg.github.io/plie/`. Ábrela para comprobarlo. La app ya enlaza esa dirección sola.
 
 ## Paso 4 · Cuenta de desarrollador de Google Play
 
@@ -43,7 +45,7 @@ Guarda `plie-upload.jks` y `SECRETOS-GITHUB.txt` en un sitio seguro. **Si los pi
    - **Bonificado** · nombre "Desbloquear día". Es el anuncio que la persona elige ver para adelantar el día siguiente de una modalidad, como máximo una vez al día por modalidad. En "Recompensa" pon cantidad 1 y artículo "dia".
 5. En la configuración de la app en AdMob, revisa **Configuración de la app > Contenido dirigido a menores** y ajusta las categorías de anuncios bloqueadas a contenido apto para todos los públicos.
 6. **Privacidad y mensajes**: crea el mensaje de consentimiento para el RGPD (Europa). La app ya lo muestra a los adultos donde haga falta.
-7. En GitHub: **Settings > Secrets and variables > Actions > pestaña Variables > New repository variable**. Crea estas dos:
+7. En GitHub: **Settings > Secrets and variables > Actions > pestaña Variables > New repository variable**. Crea estas cuatro:
 
 | Nombre | Valor |
 |---|---|
@@ -69,7 +71,7 @@ Guarda `plie-upload.jks` y `SECRETOS-GITHUB.txt` en un sitio seguro. **Si los pi
 
 **Contenido de la app** (Política > Contenido de la app). Responde así:
 
-- **Política de privacidad:** `https://TU-USUARIO.github.io/plie/`
+- **Política de privacidad:** `https://pabpima2008-svg.github.io/plie/`
 - **Anuncios:** Sí, la app contiene anuncios.
 - **Acceso a la app:** todas las funciones están disponibles sin restricciones (no hay cuentas).
 - **Clasificación de contenido:** categoría "Todas las demás apps" o "Referencia, salud, educación". No hay violencia, sexo, lenguaje malsonante, drogas ni apuestas. Hay compras en la app y anuncios. Resultado esperado: PEGI 3 / Para todos.

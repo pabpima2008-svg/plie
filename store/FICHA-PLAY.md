@@ -6,8 +6,8 @@
 - **Nombre en inglés:** Plié: Ballet at home
 - **Categoría:** Salud y bienestar (alternativa: Educación)
 - **Etiquetas sugeridas:** Baile, Ejercicio en casa, Educación
-- **Correo de contacto:** el tuyo (es obligatorio y se muestra en la ficha)
-- **Web de la política de privacidad:** `https://TU-USUARIO.github.io/plie/`
+- **Correo de contacto:** pabpima2008@gmail.com
+- **Web de la política de privacidad:** `https://pabpima2008-svg.github.io/plie/`
 
 ## Descripción breve (máx. 80 caracteres)
 

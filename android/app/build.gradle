@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 
+// Solo se firma si estan la clave y sus contrasenas (GitHub Actions las pasa en el paso del AAB).
+def firmaLista = System.getenv("KEYSTORE_PATH") && System.getenv("KEYSTORE_PASSWORD") && System.getenv("KEY_ALIAS") && System.getenv("KEY_PASSWORD")
+
 android {
     namespace = "com.pliedance.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -21,9 +24,8 @@ android {
     signingConfigs {
         release {
             // La clave de firma llega por variables de entorno (GitHub Actions). Si no estan, no se firma.
-            def ksPath = System.getenv("KEYSTORE_PATH")
-            if (ksPath) {
-                storeFile file(ksPath)
+            if (firmaLista) {
+                storeFile file(System.getenv("KEYSTORE_PATH"))
                 storePassword System.getenv("KEYSTORE_PASSWORD")
                 keyAlias System.getenv("KEY_ALIAS")
                 keyPassword System.getenv("KEY_PASSWORD")
@@ -32,7 +34,7 @@ android {
     }
     buildTypes {
         release {
-            if (System.getenv("KEYSTORE_PATH")) {
+            if (firmaLista) {
                 signingConfig signingConfigs.release
             }
             minifyEnabled false
